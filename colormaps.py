@@ -6,7 +6,7 @@ from scipy.stats import beta
 rgb_weight = np.array([0.2989, 0.5870, 0.1140])
 
 
-def get_continuous_cmap(n, name: str, ijk: tuple, x1: float):
+def get_continuous_cmap(n, name: str, ijk: tuple):
     space = np.linspace(0, 1, n)
     if ijk is not None:
         vals = cmap_dict[name](space, *ijk)
