@@ -96,7 +96,7 @@ def copper_salt(x, i: int = 0, j: int = 1, k: int = 2):
     result = np.zeros([*x.shape, 4])
     dist = beta(2, 4)
     pdf = dist.pdf
-    envelope = diverging_envelope(x, c=4, x1=0.4)
+    envelope = diverging_envelope(x, c=4, x1=0.45)
     result[..., i] = pdf(x)
     result[..., k] = pdf(1-x)
     result[..., i] /= np.max(result[..., i])
@@ -116,13 +116,13 @@ def copper_salt(x, i: int = 0, j: int = 1, k: int = 2):
 
 def intensity_spiral(x: np.ndarray, i=0, j=1, k=2):
     r = x.copy().reshape(x.size, 1)
-    angles = 1 * np.pi * r
-    r *= 100
-    cos = np.cos(angles) * 100
-    sin = np.sin(angles) * 100
+    angles = 2 * np.pi * r
+    r = r * 100
+    cos = np.cos(angles) * 127.5 + 0.5
+    sin = np.sin(angles) * 127.5 + 0.5
     lab_values = np.hstack((r, cos, sin), dtype=np.float32)
 
-    rgb_values = color.lab2rgb(lab_values[np.newaxis, :, :])[0]
+    rgb_values = color.lab2rgb(lab_values)
     rgb_values = np.clip(rgb_values, 0, 1)
 
     # rgb_values = rgb_values * rgb_weight
@@ -131,7 +131,7 @@ def intensity_spiral(x: np.ndarray, i=0, j=1, k=2):
 
 def rgb_to_grayscale(rgb: np.ndarray):
     """Convert RGB values to grayscale using luminosity values of RGB channels."""
-    return np.dot(rgb[...,:3], rgb_weight)
+    return np.sqrt(np.dot(rgb[...,:3] ** 2, rgb_weight))
 
 cmap_dict = {
     "cold_blood": cold_blood,
@@ -147,7 +147,7 @@ def get_custom_cmap(name: str = "diverging_linear", n: int = 1000, ijk: tuple = 
 
 
 if __name__ == "__main__":
-    cmap = get_custom_cmap("intensity_spiral", 1000, None)
+    cmap = get_custom_cmap("copper_salt", 1000, None)
 
     gradient = np.linspace(0, 1, 1000)
     gradient = np.vstack((gradient, gradient))
@@ -173,5 +173,8 @@ if __name__ == "__main__":
 
     for c, color_string in zip(range(3), ["red", "green", "blue"]):
         axes[2].plot(gradient_rgb[0, :, c], color=color_string)
+    
+    luminance = rgb_to_grayscale(gradient_rgb[0])
+    axes[2].plot(luminance, color="black")
 
     plt.show()
