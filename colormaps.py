@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
+from matplotlib import colormaps
 
 
 rgb_weight = np.array([0.2989, 0.5870, 0.1140])
@@ -163,6 +164,41 @@ def brg_spiral(x: np.ndarray, *args):
     return convert_from_lab(lab_control_points, x.size)
 
 
+def rbg_spiral(x: np.ndarray, *args):
+    lab_control_points = np.array([
+        [   0.,           71.10362846,   59.68719022],
+        [  11.11111111,   63.45828734,   26.37955722],
+        [  22.22222222,   52.59385522,  -17.23758123],
+        [  33.33333333,   21.20771799,  -37.85659214],
+        [  44.44444444,  -17.82376036,  -21.99581452],
+        [  55.55555556,  -43.17410197,   17.65612953],
+        [  66.66666667,  -45.58842021,   63.25586518],
+        [  77.77777778,  -29.8953516,    76.73752616],
+        [  88.88888889,  -10.58080561,   55.32547637],
+        [ 100.,            0.,            0.,       ]
+    ])
+
+    return convert_from_lab(lab_control_points, x.size)
+
+
+def rbg_spiral2(x: np.ndarray, *args):
+    lab_control_points = np.array([
+        [   0.,           55.41055985,   47.79160701],
+        [  10.,           56.61771897,   18.05264897],
+        [  20.,           53.39862797,   -8.91067298],
+        [  30.,           42.93658223,  -27.94360612],
+        [  40.,           22.81726349,  -32.70183941],
+        [  50.,           -3.33785087,  -29.13316445],
+        [  60.,          -20.64046498,  -13.27238683],
+        [  70.,          -30.70012435,   10.91529904],
+        [  80.,          -21.04285135,   25.98303778],
+        [  90.,           -7.76410099,   18.05264897],
+        [ 100.,            0.,            0.        ]
+    ])
+
+    return convert_from_lab(lab_control_points, x.size)
+
+
 def rgb_to_grayscale(rgb: np.ndarray):
     """Convert RGB values to grayscale using luminosity values of RGB channels."""
     return np.sqrt(np.dot(rgb[...,:3] ** 2, rgb_weight))
@@ -172,7 +208,9 @@ cmap_dict = {
     "better_rgb": better_rgb,
     "copper_salt": copper_salt,
     "rgb_spiral": rgb_spiral,
-    "brg_spiral": brg_spiral
+    "brg_spiral": brg_spiral,
+    "rbg_spiral": rbg_spiral,
+    "rbg_spiral2": rbg_spiral2
 }
 
 
@@ -182,7 +220,7 @@ def get_custom_cmap(name: str = "diverging_linear", n: int = 1000, ijk: tuple = 
 
 
 if __name__ == "__main__":
-    cmap = get_custom_cmap("brg_spiral", 1000, None)
+    cmap = get_custom_cmap("rbg_spiral2", 1000, None)
 
     gradient = np.linspace(0, 1, 1000)
     gradient = np.vstack((gradient, gradient))
