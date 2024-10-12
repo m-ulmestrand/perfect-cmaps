@@ -1,10 +1,10 @@
 import matplotlib.colors as mcolors
-from matplotlib.colors import LinearSegmentedColormap
 from skimage import color
 
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy.stats import beta
+from scipy.interpolate import interp1d
 
 
 rgb_weight = np.array([0.2989, 0.5870, 0.1140])
@@ -114,19 +114,53 @@ def copper_salt(x, i: int = 0, j: int = 1, k: int = 2):
     return result
 
 
-def intensity_spiral(x: np.ndarray, i=0, j=1, k=2):
-    r = x.copy().reshape(x.size, 1)
-    angles = 2 * np.pi * r
-    r = r * 100
-    cos = np.cos(angles) * 127.5 + 0.5
-    sin = np.sin(angles) * 127.5 + 0.5
-    lab_values = np.hstack((r, cos, sin), dtype=np.float32)
+def convert_from_lab(control_points: np.ndarray, num_values: int):
+    # Interpolate between the control points
+    lab_colors = np.zeros((num_values, 3))
+    for i in range(3):
+        interpolator = interp1d(np.linspace(0, 1, control_points.shape[0]), control_points[:, i], kind='cubic')
+        lab_colors[:, i] = interpolator(np.linspace(0, 1, num_values))
 
-    rgb_values = color.lab2rgb(lab_values)
-    rgb_values = np.clip(rgb_values, 0, 1)
+    # Convert the LAB colors to RGB
+    return color.lab2rgb(lab_colors)
 
-    # rgb_values = rgb_values * rgb_weight
-    return rgb_values
+
+def rgb_spiral(x: np.ndarray, *args):
+    lab_control_points = np.array([
+        [   0.,           45.75328685,  -44.59742262],
+        [   8.33333333,   61.44635547,  -26.7540478 ],
+        [  16.66666667,   65.06783284,   -7.72111466],
+        [  25.,           61.04396909,   12.89789624],
+        [  33.33333333,   50.98430973,   25.98303778],
+        [  41.66666667,   33.68169561,   36.29254323],
+        [  50.,           15.17192237,   40.65425708],
+        [  58.33333333,   -1.32591899,   41.44729596],
+        [  66.66666667,  -16.61660123,   37.08558211],
+        [  75.,          -24.66432873,   24.39696002],
+        [  83.33333333,  -25.0667151,     9.32922128],
+        [  91.66666667,  -18.22614673,    0.20927415],
+        [ 100.,            0.,            0.        ]
+    ])
+
+    return convert_from_lab(lab_control_points, x.size)
+
+
+def brg_spiral(x: np.ndarray, *args):
+    lab_control_points = np.array([
+        [   0.,           27.64589999,  -50.54521423],
+        [  10.,           50.58192335,  -40.23570878],
+        [  20.,           60.64158272,  -17.63410067],
+        [  30.,           57.42249172,    4.57098799],
+        [  40.,           43.33896861,   22.41436282],
+        [  50.,           23.21964987,   34.30994603],
+        [  60.,           -2.53307812,   39.06817931],
+        [  70.,          -22.25001048,   31.53430995],
+        [  80.,          -26.27387423,   10.91529904],
+        [  90.,          -15.00705573,    0.60579359],
+        [ 100.,            0.,            0.        ]
+    ])
+
+    return convert_from_lab(lab_control_points, x.size)
 
 
 def rgb_to_grayscale(rgb: np.ndarray):
@@ -137,7 +171,8 @@ cmap_dict = {
     "cold_blood": cold_blood,
     "better_rgb": better_rgb,
     "copper_salt": copper_salt,
-    "intensity_spiral": intensity_spiral
+    "rgb_spiral": rgb_spiral,
+    "brg_spiral": brg_spiral
 }
 
 
@@ -147,7 +182,7 @@ def get_custom_cmap(name: str = "diverging_linear", n: int = 1000, ijk: tuple = 
 
 
 if __name__ == "__main__":
-    cmap = get_custom_cmap("copper_salt", 1000, None)
+    cmap = get_custom_cmap("brg_spiral", 1000, None)
 
     gradient = np.linspace(0, 1, 1000)
     gradient = np.vstack((gradient, gradient))
