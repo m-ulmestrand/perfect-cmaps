@@ -69,30 +69,6 @@ def cold_blood(x, i: int = 1, j: int = 2, k: int = 0):
     return result
 
 
-def better_rgb(x, i: int = 0, j: int = 1, k: int = 2):
-    offset = 2
-    intensity = 1
-    decay = 4
-    I = (1 - np.exp(-decay * x)) * intensity
-    I = intensity * x
-    result = np.zeros([*x.shape, 4])
-    result[..., i] = dying_cos(x, 1-offset)
-    result[..., j] = dying_cos(x, 1/2-offset)
-    result[..., k] = dying_cos(x, 0-offset)
-    result[..., :3] = np.sqrt(result[..., :3])
-
-    weight = 1 / np.sqrt(rgb_weight)
-    result[..., :3] = np.einsum(
-        'i...j,k...j,i...k->i...j', 
-        result[..., :3],
-        weight.reshape(1, weight.size), 
-        I.reshape(*x.shape, 1)
-    )
-    result[..., :3] /= np.max(np.max(result))
-    result[..., 3] = 1
-    return result
-
-
 def copper_salt(x, i: int = 0, j: int = 1, k: int = 2):
     result = np.zeros([*x.shape, 4])
     dist = beta(2, 4)
@@ -205,7 +181,6 @@ def rgb_to_grayscale(rgb: np.ndarray):
 
 cmap_dict = {
     "cold_blood": cold_blood,
-    "better_rgb": better_rgb,
     "copper_salt": copper_salt,
     "rgb_spiral": rgb_spiral,
     "brg_spiral": brg_spiral,
@@ -220,8 +195,7 @@ def get_custom_cmap(name: str = "cold_blood", n: int = 1000, ijk: tuple = None):
 
 
 if __name__ == "__main__":
-    cmap = get_custom_cmap("rbg_spiral2", 1000, None)
-    # cmap = colormaps["viridis"]
+    cmap = get_custom_cmap("rgb_spiral2", 1000, None)
 
     gradient = np.linspace(0, 1, 1000)
     gradient = np.vstack((gradient, gradient))
@@ -251,4 +225,11 @@ if __name__ == "__main__":
     luminance = rgb_to_grayscale(gradient_rgb[0])
     axes[2].plot(luminance, color="black")
 
+    plt.show()
+
+    for c, color_string in zip(range(3), ["red", "green", "blue"]):
+        plt.plot(gradient_rgb[0, :, c], color=color_string)
+    
+    luminance = rgb_to_grayscale(gradient_rgb[0])
+    plt.plot(luminance, color="black")
     plt.show()
