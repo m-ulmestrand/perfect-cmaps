@@ -214,13 +214,14 @@ cmap_dict = {
 }
 
 
-def get_custom_cmap(name: str = "diverging_linear", n: int = 1000, ijk: tuple = None):
+def get_custom_cmap(name: str = "cold_blood", n: int = 1000, ijk: tuple = None):
     cmp = get_continuous_cmap(n, name, ijk)
     return cmp
 
 
 if __name__ == "__main__":
     cmap = get_custom_cmap("rbg_spiral2", 1000, None)
+    # cmap = colormaps["viridis"]
 
     gradient = np.linspace(0, 1, 1000)
     gradient = np.vstack((gradient, gradient))
