@@ -6,29 +6,40 @@ import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
 from matplotlib import colormaps
+from pathlib import Path
+from typing import Tuple
+import json
 
 
-rgb_weight = np.array([0.2989, 0.5870, 0.1140])
+def load_json_points(cmap_name: str, n: int):
+    file_path = Path(__file__).parent / "lab_control_points" / Path(cmap_name).name
+    with open(file_path) as json_file:
+        lab_control_points = json.load(json_file)["points"]
+    
+    lab_control_points = np.array(lab_control_points)
+    return convert_from_lab(lab_control_points, n)
 
 
-def get_continuous_cmap(n, name: str, ijk: tuple = None):
+def get_continuous_cmap(cmap_name: str, n: int, ijk: Tuple | None = None):
     space = np.linspace(0, 1, n)
-    if ijk is not None:
-        vals = cmap_dict[name](space, *ijk)
+
+    if cmap_name.endswith(".json"):
+        vals = load_json_points(cmap_name, n)
     else:
-        vals = cmap_dict[name](space)
+        vals = CMAP_DICT[cmap_name](space, ijk)
+    
     cdict = dict()
 
-    for num, col in enumerate(['red', 'green', 'blue']):
+    for num, col in enumerate(["red", "green", "blue"]):
         col_list = [[space[i], vals[i][num], vals[i][num]] for i in range(n)]
         cdict[col] = col_list
-    cmp = mcolors.LinearSegmentedColormap(name, segmentdata=cdict, N=n)
+    cmp = mcolors.LinearSegmentedColormap(cmap_name, segmentdata=cdict, N=n)
     return cmp
 
 
 def diverging_envelope(x: np.ndarray, c=4, x1=0.25):
     result = np.zeros(x.shape)
-    m = x1 * (c - 2) / (1 - 2 * x1)
+    m = x1 * (c - 2) / (1 - 2 * x1 + 1e-5)
 
     below_x1 = x <= x1
     result[below_x1] = c*x[below_x1]
@@ -54,38 +65,48 @@ def dying_cos(x, offset: float = 0.0):
     return result
 
 
-def cold_blood(x, i: int = 1, j: int = 2, k: int = 0):
+def unwrap_channels(ijk: Tuple | None = None):
+    if ijk is None:
+        ijk = (0, 1, 2)
+    
+    return ijk
+
+
+def cold_blood(x, ijk: Tuple | None = None):
+    i, j, k = unwrap_channels(ijk)
+
     result = np.zeros([*x.shape, 4])
     period = 2*np.pi
-    result[..., i] = x**2 - x/period * np.sin(period*x)
-    result[..., j] = ((1 - np.cos(period/2*x))/2)**2
-    result[..., k] = 3*x**2 - result[..., i] - result[..., j]
+    result[..., j] = x**2 - x/period * np.sin(period*x)
+    result[..., k] = ((1 - np.cos(period/2*x))/2)**2
+    result[..., i] = 3*x**2 - result[..., j] - result[..., k]
     result[..., :3] = np.sqrt(result[..., :3])
 
     result[..., :3] /= np.max(np.max(result))
     result[..., 3] = 1
-    # result = np.hstack((result[:, i:i+1], result[:, j:j+1], result[:, k:k+1]))
     
     return result
 
 
-def copper_salt(x, i: int = 0, j: int = 1, k: int = 2):
+def copper_salt(x, ijk: Tuple | None = None):
+    i, j, k = unwrap_channels(ijk)
+
     result = np.zeros([*x.shape, 4])
     dist = beta(2, 4)
     pdf = dist.pdf
-    envelope = diverging_envelope(x, c=4, x1=0.45)
+    envelope = diverging_envelope(x, c=4, x1=0.5)
     result[..., i] = pdf(x)
     result[..., k] = pdf(1-x)
     result[..., i] /= np.max(result[..., i])
     result[..., k] /= np.max(result[..., k])
     result[..., j] = np.sqrt(3 * envelope - result[..., i] ** 2 - result[..., k] ** 2)
-    weight = 1 / np.sqrt(rgb_weight)
+    weight = 1 / np.sqrt(RGB_WEIGHT)
+    
     result[..., :3] = np.einsum(
         'i...j,k...j->i...j', 
         result[..., :3],
         weight.reshape(1, *weight.shape)
     )
-
     result[..., :3] /= np.max(result)
     result[..., 3] = 1
     return result
@@ -102,102 +123,36 @@ def convert_from_lab(control_points: np.ndarray, num_values: int):
     return color.lab2rgb(lab_colors)
 
 
-def rgb_spiral(x: np.ndarray, *args):
-    lab_control_points = np.array([
-        [   0.,           45.75328685,  -44.59742262],
-        [   8.33333333,   61.44635547,  -26.7540478 ],
-        [  16.66666667,   65.06783284,   -7.72111466],
-        [  25.,           61.04396909,   12.89789624],
-        [  33.33333333,   50.98430973,   25.98303778],
-        [  41.66666667,   33.68169561,   36.29254323],
-        [  50.,           15.17192237,   40.65425708],
-        [  58.33333333,   -1.32591899,   41.44729596],
-        [  66.66666667,  -16.61660123,   37.08558211],
-        [  75.,          -24.66432873,   24.39696002],
-        [  83.33333333,  -25.0667151,     9.32922128],
-        [  91.66666667,  -18.22614673,    0.20927415],
-        [ 100.,            0.,            0.        ]
-    ])
-
-    return convert_from_lab(lab_control_points, x.size)
-
-
-def brg_spiral(x: np.ndarray, *args):
-    lab_control_points = np.array([
-        [   0.,           27.64589999,  -50.54521423],
-        [  10.,           50.58192335,  -40.23570878],
-        [  20.,           60.64158272,  -17.63410067],
-        [  30.,           57.42249172,    4.57098799],
-        [  40.,           43.33896861,   22.41436282],
-        [  50.,           23.21964987,   34.30994603],
-        [  60.,           -2.53307812,   39.06817931],
-        [  70.,          -22.25001048,   31.53430995],
-        [  80.,          -26.27387423,   10.91529904],
-        [  90.,          -15.00705573,    0.60579359],
-        [ 100.,            0.,            0.        ]
-    ])
-
-    return convert_from_lab(lab_control_points, x.size)
-
-
-def rbg_spiral(x: np.ndarray, *args):
-    lab_control_points = np.array([
-        [   0.,           71.10362846,   59.68719022],
-        [  11.11111111,   63.45828734,   26.37955722],
-        [  22.22222222,   52.59385522,  -17.23758123],
-        [  33.33333333,   21.20771799,  -37.85659214],
-        [  44.44444444,  -17.82376036,  -21.99581452],
-        [  55.55555556,  -43.17410197,   17.65612953],
-        [  66.66666667,  -45.58842021,   63.25586518],
-        [  77.77777778,  -29.8953516,    76.73752616],
-        [  88.88888889,  -10.58080561,   55.32547637],
-        [ 100.,            0.,            0.,       ]
-    ])
-
-    return convert_from_lab(lab_control_points, x.size)
-
-
-def rbg_spiral2(x: np.ndarray, *args):
-    lab_control_points = np.array([
-        [   0.,           55.41055985,   47.79160701],
-        [  10.,           56.61771897,   18.05264897],
-        [  20.,           53.39862797,   -8.91067298],
-        [  30.,           42.93658223,  -27.94360612],
-        [  40.,           22.81726349,  -32.70183941],
-        [  50.,           -3.33785087,  -29.13316445],
-        [  60.,          -20.64046498,  -13.27238683],
-        [  70.,          -30.70012435,   10.91529904],
-        [  80.,          -21.04285135,   25.98303778],
-        [  90.,           -7.76410099,   18.05264897],
-        [ 100.,            0.,            0.        ]
-    ])
-
-    return convert_from_lab(lab_control_points, x.size)
-
-
 def rgb_to_grayscale(rgb: np.ndarray):
     """Convert RGB values to grayscale using luminosity values of RGB channels."""
-    return np.sqrt(np.dot(rgb[...,:3] ** 2, rgb_weight))
+    return np.sqrt(np.dot(rgb[...,:3] ** 2, RGB_WEIGHT))
 
-cmap_dict = {
-    "cold_blood": cold_blood,
-    "copper_salt": copper_salt,
-    "rgb_spiral": rgb_spiral,
-    "brg_spiral": brg_spiral,
-    "rbg_spiral": rbg_spiral,
-    "rbg_spiral2": rbg_spiral2
-}
+
+def truncate_colormap(cmap: mcolors.LinearSegmentedColormap, minval: float = 0.0, maxval: float = 1.0, n: int = 1000):
+    new_cmap = mcolors.LinearSegmentedColormap.from_list(
+        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+        cmap(np.linspace(minval, maxval, n)))
+    return new_cmap
 
 
 def get_custom_cmap(name: str = "cold_blood", n: int = 1000, ijk: tuple = None):
-    cmp = get_continuous_cmap(n, name, ijk)
+    cmp = get_continuous_cmap(name, n, ijk)
     return cmp
 
 
-if __name__ == "__main__":
-    cmap = get_custom_cmap("rgb_spiral2", 1000, None)
+RGB_WEIGHT = np.array([0.2989, 0.5870, 0.1140])
+CMAP_DICT = {
+    "cold_blood": cold_blood,
+    "copper_salt": copper_salt
+}
 
-    gradient = np.linspace(0, 1, 1000)
+
+if __name__ == "__main__":
+    n = 1000
+    cmap = get_custom_cmap("copper_salt", n)
+    # cmap = colormaps["magma"]
+
+    gradient = np.linspace(0, 1, n)
     gradient = np.vstack((gradient, gradient))
 
     # Get RGB values from colormap
@@ -232,4 +187,13 @@ if __name__ == "__main__":
     
     luminance = rgb_to_grayscale(gradient_rgb[0])
     plt.plot(luminance, color="black")
+    plt.show()
+
+    dem_data = plt.imread("/home/mattias/imgs/DEM3.gif")
+    
+    if len(dem_data.shape) == 3:
+        dem_data = dem_data[:, :, 0]
+        
+    plt.imshow(dem_data, cmap=cmap)
+    plt.colorbar()
     plt.show()
