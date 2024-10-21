@@ -172,7 +172,7 @@ def truncate_colormap(cmap: mcolors.LinearSegmentedColormap, minval: float = 0.0
     return new_cmap
 
 
-def Lab_to_sRGB(lab_colors):
+def Lab_to_sRGB(lab_colors: np.ndarray):
     """
     Convert CIE-LAB colors to sRGB color space.
     
@@ -195,7 +195,7 @@ def Lab_to_sRGB(lab_colors):
     return RGB
 
 
-def find_valid_L_range_slow(a_star, b_star, L_initial=50):
+def find_valid_L_range_slow(a_star: float, b_star: float, L_initial: int = 50):
     """
     Find the valid L* range for a given a* and b* such that the Lab color
     maps to valid RGB colors without clipping.
@@ -239,7 +239,7 @@ def find_valid_L_range_slow(a_star, b_star, L_initial=50):
     return L_min_valid, L_max_valid
 
 
-def find_valid_L_range(a_star, b_star):
+def find_valid_L_range(a_star: float, b_star: float):
     # Vectorized L* samples
     L_samples = np.linspace(0, 100, 100)
     # Create an array of Lab colors
@@ -262,7 +262,7 @@ def find_valid_L_range(a_star, b_star):
     return L_min_valid, L_max_valid
 
 
-def find_valid_L_range_coarse_optim(a_star, b_star):
+def find_valid_L_range_coarse_optim(a_star: float, b_star: float):
     # Coarse sampling
     L_samples_coarse = np.linspace(0, 100, 50)
     lab_coarse = np.column_stack((L_samples_coarse, np.full_like(L_samples_coarse, a_star), np.full_like(L_samples_coarse, b_star)))
@@ -295,46 +295,82 @@ def find_valid_L_range_coarse_optim(a_star, b_star):
     return L_min_valid, L_max_valid
 
 
-def optimize_parameters(L_intended, L_min, L_max):
+def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, lightness_profile: str | None = None):
     n = len(L_intended)
+    optimize_c = lightness_profile != "flat"
 
-    # Objective function: minimize -m (maximize m)
-    c_obj = [-1, 0]  # Coefficients for variables [m, c]
+    if optimize_c:
+        # Objective function: minimize -m (maximize m)
+        c_obj = [-1, 0]  # Coefficients for variables [m, c]
 
-    # Inequality constraints: A_ub * x <= b_ub
-    A_ub = np.zeros((2 * n, 2))  # Two variables: m and c
-    b_ub = np.zeros(2 * n)
+        # Inequality constraints: A_ub * x <= b_ub
+        A_ub = np.zeros((2 * n, 2))  # Two variables: m and c
+        b_ub = np.zeros(2 * n)
 
-    for i in range(n):
-        # Constraint: -L_intended_i * m - c <= -L_min_i
-        A_ub[2 * i] = [-L_intended[i], -1]
-        b_ub[2 * i] = -L_min[i]
+        for i in range(n):
+            # Constraint: -L_intended_i * m - c <= -L_min_i
+            A_ub[2 * i] = [-L_intended[i], -1]
+            b_ub[2 * i] = -L_min[i]
 
-        # Constraint: L_intended_i * m + c <= L_max_i
-        A_ub[2 * i + 1] = [L_intended[i], 1]
-        b_ub[2 * i + 1] = L_max[i]
+            # Constraint: L_intended_i * m + c <= L_max_i
+            A_ub[2 * i + 1] = [L_intended[i], 1]
+            b_ub[2 * i + 1] = L_max[i]
 
-    # Variable bounds
-    bounds = [(0, None),  # m >= 0
-              (None, None)]  # c is unbounded
+        # Variable bounds
+        bounds = [
+            (0, 1),      # m >= 0
+            (-100, 100)  # c between -100 and 100
+        ]
+    else:
+        # Objective function: minimize -m (maximize m)
+        c_obj = [-1]  # Coefficient for variable m
+
+        # Inequality constraints: A_ub * x <= b_ub
+        A_ub = np.zeros((2 * n, 1))  # One variable: m
+        b_ub = np.zeros(2 * n)
+
+        for i in range(n):
+            # Constraint: -L_intended_i * m <= -L_min_i
+            A_ub[2 * i] = [-L_intended[i]]
+            b_ub[2 * i] = -L_min[i]
+
+            # Constraint: L_intended_i * m <= L_max_i
+            A_ub[2 * i + 1] = [L_intended[i]]
+            b_ub[2 * i + 1] = L_max[i]
+
+        # Variable bounds
+        bounds = [
+            (0, 2)  # m >= 0
+        ]
+
+        c_opt = 0  # c is fixed to zero
 
     # Solve the linear programming problem
-    res = linprog(c=c_obj, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
+    res = linprog(
+        c=c_obj,
+        A_ub=A_ub,
+        b_ub=b_ub,
+        bounds=bounds,
+        method='highs'
+    )
 
     if res.success:
-        m_opt, c_opt = res.x
+        m_opt = res.x[0]
+        if optimize_c:
+            c_opt = res.x[1]
         print(f"Optimal m: {m_opt}, Optimal c: {c_opt}")
         L_adjusted = m_opt * L_intended + c_opt
         return L_adjusted, m_opt, c_opt
     else:
         raise ValueError(
-            "Optimization failed: " + 
-            res.message + 
+            "Optimization failed: " +
+            res.message +
             "\nOptimization infeasible for the chosen lightness profile"
         )
 
 
-def rgb_renormalized_lightness(lab_colors: np.ndarray):
+
+def rgb_renormalized_lightness(lab_colors: np.ndarray, lightness_profile: str | None = None):
     # Compute L_min and L_max for each color
     n_colors = lab_colors.shape[0]
     L_min = np.zeros(n_colors)
@@ -349,7 +385,7 @@ def rgb_renormalized_lightness(lab_colors: np.ndarray):
     L_intended = lab_colors[:, 0]
 
     # Optimize m and c
-    L_adjusted, m_opt, c_opt = optimize_parameters(L_intended, L_min, L_max)
+    L_adjusted, m_opt, c_opt = optimize_parameters(L_intended, L_min, L_max, lightness_profile)
 
     # Update L* values in lab_colors
     lab_colors[:, 0] = L_adjusted
