@@ -99,7 +99,7 @@ plt.subplots_adjust(left=0.25, right=0.95, top=0.95, bottom=0.05)
 rax = plt.axes([0.02, 0.4, 0.2, 0.15])  # [left, bottom, width, height]
 
 # Define the labels for the RadioButtons
-lightness_profiles = ('Linear', 'Diverging', "Diverging_quadratic", 'Flat')
+lightness_profiles = ('Linear', 'Diverging', "Diverging_inverted", 'Flat')
 
 # Create the RadioButtons
 radio = RadioButtons(rax, lightness_profiles)
@@ -152,13 +152,14 @@ def update_colormap(event):
     control_points = np.array(clicked_points)
     n_colors = 256 
     # Interpolate between the control points in LAB space
-    lab_colors = interpolate_lab(control_points, n_colors, profile=radio.value_selected.lower())
+    lightness_profile = radio.value_selected.lower()
+    lab_colors = interpolate_lab(control_points, n_colors, profile=lightness_profile)
     # Remove previous line if it exists
     if line_handle is not None:
         line_handle.remove()
     # Plot new line and store the line object
     line_handle, = ax2.plot(lab_colors[:, 1], lab_colors[:, 2], color="black")
-    rgb_colors, m, c = rgb_renormalized_lightness(lab_colors)
+    rgb_colors, m, c = rgb_renormalized_lightness(lab_colors, lightness_profile)
     rgb_colors = np.clip(rgb_colors, 0, 1)
     update_gradient_plot(rgb_colors, ax_rgb, ax_gray)
 
@@ -168,7 +169,6 @@ def onclick(event):
     if event.inaxes == ax2:
         global clicked_points, line_handle
         x, y = event.xdata, event.ydata
-        print(f"Clicked at a* = {x:.2f}, b* = {y:.2f}")
         clicked_points.append((x, y))
         # Always append (0, 0) at the end
         # clicked_points.append((0, 0))
@@ -193,7 +193,7 @@ clicked_points = np.array(clicked_points)
 
 points_dict = {
     "points": clicked_points.tolist(),
-    "profile": radio.value_selected.lower()
+    "lightness": radio.value_selected.lower()
 }
 cmap_name = input("\nEnter desired colormap name. Quit with 'q'.\nControl points are saved in folder ./lab_control_points.\nColormap name: ")
 cmap_name = cmap_name.strip()
