@@ -7,10 +7,8 @@ from scipy.interpolate import interp1d
 from pathlib import Path
 from typing import Tuple
 import json
-from skimage.color.colorconv import xyz_tristimulus_values
-from skimage.color.colorconv import xyz2rgb
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
-from scipy.optimize import bisect, minimize
+from scipy.optimize import bisect
 from scipy.optimize import linprog
 
 
@@ -183,11 +181,6 @@ def truncate_colormap(cmap: mcolors.LinearSegmentedColormap, minval: float = 0.0
         'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
         cmap(np.linspace(minval, maxval, n)))
     return new_cmap
-
-
-def convert_from_lab(lab_colors: np.ndarray):
-    return rgb_renormalized_lightness(lab_colors)
-    return color.lab2rgb(lab_colors)
 
 
 def Lab_to_sRGB(lab_colors):
