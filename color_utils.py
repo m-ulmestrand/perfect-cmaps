@@ -103,20 +103,9 @@ def get_lightness_profile(n_values: int, profile: str = "linear"):
     if profile == "linear":
         L_values = np.linspace(0, 100, n_values)
     elif profile == "diverging":
-        mid_idx = n_values // 2
-        if n_values % 2 == 0:
-            L_values = np.concatenate((
-                np.linspace(0, 100, mid_idx, endpoint=False),
-                np.linspace(100, 0, n_values - mid_idx)
-            ))
-        else:
-            L_values = np.concatenate((
-                np.linspace(0, 100, mid_idx + 1, endpoint=False),
-                np.linspace(100, 0, n_values - mid_idx)
-            ))
-
-    elif profile == "diverging_quadratic":
         L_values = 100 - np.linspace(-10, 10, n_values) ** 2
+    elif profile == "diverging_inverted":
+        L_values = np.linspace(-10, 10, n_values) ** 2
     elif profile == "flat":
         # Use a flat lightness profile, e.g., L = 50
         L_values = np.full(n_values, 50)
@@ -338,7 +327,11 @@ def optimize_parameters(L_intended, L_min, L_max):
         L_adjusted = m_opt * L_intended + c_opt
         return L_adjusted, m_opt, c_opt
     else:
-        raise ValueError("Optimization failed: " + res.message)
+        raise ValueError(
+            "Optimization failed: " + 
+            res.message + 
+            "\nOptimization infeasible for the chosen lightness profile"
+        )
 
 
 def rgb_renormalized_lightness(lab_colors: np.ndarray):
