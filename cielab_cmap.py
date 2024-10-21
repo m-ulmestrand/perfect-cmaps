@@ -1,36 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage import color
 from matplotlib.colors import ListedColormap
-# from numba import njit, prange
-from scipy.interpolate import interp1d
-from matplotlib import colormaps
+from color_utils import convert_from_lab, load_json, interpolate_lab_to_rgb
 
 
 def main(lab_control_points: np.array, n_colors: int = 1000):
     if lab_control_points.size == 0:
-        # Define the control points in LAB space
+        lab_control_points = load_json("rainbow2", n_colors)
 
-        lab_control_points = np.array([
-            [   0.        ,   58.62965085,  -56.49300584],
-            [  11.11111111,   32.07215011,  -54.51040864],
-            [  22.22222222,    6.7218085 ,  -42.61482542],
-            [  33.33333333,  -12.99512386,  -25.56448948],
-            [  44.44444444,  -24.26194235,  -10.1002313 ],
-            [  55.55555556,  -32.30966985,   11.31181848],
-            [  66.66666667,  -37.94307909,   33.12038771],
-            [  77.77777778,  -39.55262459,   54.92895693],
-            [  88.88888889,  -29.8953516 ,   70.39321511],
-            [ 100.        ,    0.        ,    0.        ]])
-        
     # Interpolate between the control points
-    lab_colors = np.zeros((n_colors, 3))
-    for i in range(3):
-        interpolator = interp1d(np.linspace(0, 1, lab_control_points.shape[0]), lab_control_points[:, i], kind='cubic')
-        lab_colors[:, i] = interpolator(np.linspace(0, 1, n_colors))
-
-    # Convert the LAB colors to RGB
-    rgb_colors = color.lab2rgb(lab_colors)
+    rgb_colors = interpolate_lab_to_rgb(lab_control_points, n_colors)
 
     # Ensure the RGB values are in the valid range
     rgb_colors = np.clip(rgb_colors, 0, 1)
