@@ -1,5 +1,7 @@
 import matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
+from matplotlib import colormaps
+
 import numpy as np
 from typing import Tuple
 from color_utils import *
@@ -10,8 +12,10 @@ def get_continuous_cmap(cmap_name: str, n: int, ijk: Tuple | None = None):
     space = np.linspace(0, 1, n)
 
     if cmap_name.endswith(".json"):
-        vals = load_json_points(cmap_name, n)
-        vals = interpolate_lab_to_rgb(vals, n)
+        json_data = load_json(cmap_name, n)
+        control_points = np.array(json_data["points"])
+        vals = interpolate_lab(control_points, n, json_data["profile"])
+        vals, _, _ = rgb_renormalized_lightness(vals)
     else:
         vals = CMAP_DICT[cmap_name](space, ijk)
     
@@ -58,7 +62,7 @@ if __name__ == "__main__":
     args = parse_args()
     n = args.num_points
     cmap = get_custom_cmap(args.colormap, n)
-    # cmap = colormaps["magma"]
+    # cmap = colormaps["cividis"]
 
     gradient = np.linspace(0, 1, n)
     gradient = np.vstack((gradient, gradient))

@@ -1,4 +1,5 @@
 import matplotlib.colors as mcolors
+from matplotlib import pyplot as plt
 from skimage import color
 import numpy as np
 from scipy.stats import beta
@@ -16,16 +17,13 @@ from scipy.optimize import linprog
 RGB_WEIGHT = np.array([0.2989, 0.5870, 0.1140])
 
 
-def load_json_points(cmap_name: str, n: int):
+def load_json(cmap_name: str, n: int):
     file_path = Path(__file__).parent / "lab_control_points" / Path(cmap_name).name
 
     # Adding .with_suffix() so the user can provide without the suffix
     file_path = file_path.with_suffix(".json")
     with open(file_path) as json_file:
-        control_points = json.load(json_file)["points"]
-    
-    control_points = np.array(control_points)
-    return control_points
+        return json.load(json_file)
 
 
 def diverging_envelope(x: np.ndarray, c=4, x1=0.25):
@@ -103,15 +101,43 @@ def copper_salt(x, ijk: Tuple | None = None):
     return result
 
 
-def interpolate_lab(control_points: np.ndarray, num_values: int = 1000):
+def get_lightness_profile(n_values: int, profile: str = "linear"):
+    if profile == "linear":
+        L_values = np.linspace(0, 100, n_values)
+    elif profile == "diverging":
+        mid_idx = n_values // 2
+        if n_values % 2 == 0:
+            L_values = np.concatenate((
+                np.linspace(0, 100, mid_idx, endpoint=False),
+                np.linspace(100, 0, n_values - mid_idx)
+            ))
+        else:
+            L_values = np.concatenate((
+                np.linspace(0, 100, mid_idx + 1, endpoint=False),
+                np.linspace(100, 0, n_values - mid_idx)
+            ))
+
+    elif profile == "diverging_quadratic":
+        L_values = 100 - np.linspace(-10, 10, n_values) ** 2
+    elif profile == "flat":
+        # Use a flat lightness profile, e.g., L = 50
+        L_values = np.full(n_values, 50)
+    else:
+        # Default to linear
+        L_values = np.linspace(0, 100, n_values)
+    
+    return L_values
+
+
+def interpolate_lab(control_points: np.ndarray, num_values: int = 1000, profile: str = "linear"):
     # Interpolate between the control points
     lab_colors = np.zeros((num_values, 3))
     space = np.linspace(0, 1, control_points.shape[0])
-    for i in range(1, 3):
+    for i in range(2):
         interpolator = interp1d(space, control_points[:, i], kind='cubic')
-        lab_colors[:, i] = interpolator(np.linspace(0, 1, num_values))
+        lab_colors[:, i + 1] = interpolator(np.linspace(0, 1, num_values))
 
-    lab_colors[:, 0] = np.linspace(0, 100, num_values)
+    lab_colors[:, 0] = get_lightness_profile(num_values, profile)
     return lab_colors
 
 
@@ -162,11 +188,6 @@ def truncate_colormap(cmap: mcolors.LinearSegmentedColormap, minval: float = 0.0
 def convert_from_lab(lab_colors: np.ndarray):
     return rgb_renormalized_lightness(lab_colors)
     return color.lab2rgb(lab_colors)
-
-
-def interpolate_lab_to_rgb(control_points: np.ndarray, num_values: int = 1000):
-    interpolated_colors = interpolate_lab(control_points, num_values)
-    return convert_from_lab(interpolated_colors)
 
 
 def Lab_to_sRGB(lab_colors):
@@ -322,7 +343,7 @@ def optimize_parameters(L_intended, L_min, L_max):
         m_opt, c_opt = res.x
         print(f"Optimal m: {m_opt}, Optimal c: {c_opt}")
         L_adjusted = m_opt * L_intended + c_opt
-        return L_adjusted
+        return L_adjusted, m_opt, c_opt
     else:
         raise ValueError("Optimization failed: " + res.message)
 
@@ -338,14 +359,14 @@ def rgb_renormalized_lightness(lab_colors: np.ndarray):
         b_star = lab_colors[i, 2]
         # Compute L_min[i] and L_max[i] for this (a*, b*) pair
         L_min[i], L_max[i] = find_valid_L_range(a_star, b_star)
-    
+
     L_intended = lab_colors[:, 0]
 
     # Optimize m and c
-    L_adjusted = optimize_parameters(L_intended, L_min, L_max)
+    L_adjusted, m_opt, c_opt = optimize_parameters(L_intended, L_min, L_max)
 
     # Update L* values in lab_colors
     lab_colors[:, 0] = L_adjusted
 
     # Convert adjusted Lab colors to RGB
-    return Lab_to_sRGB(lab_colors)
+    return Lab_to_sRGB(lab_colors), m_opt, c_opt
