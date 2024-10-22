@@ -1,6 +1,4 @@
 import matplotlib.colors as mcolors
-from matplotlib import pyplot as plt
-from skimage import color
 import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
@@ -362,12 +360,7 @@ def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, ligh
         L_adjusted = m_opt * L_intended + c_opt
         return L_adjusted, m_opt, c_opt
     else:
-        raise ValueError(
-            "Optimization failed: " +
-            res.message +
-            "\nOptimization infeasible for the chosen lightness profile"
-        )
-
+        raise ValueError("Optimization infeasible for the chosen lightness profile")
 
 
 def rgb_renormalized_lightness(lab_colors: np.ndarray, lightness_profile: str | None = None):
