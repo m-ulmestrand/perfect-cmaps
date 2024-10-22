@@ -11,6 +11,12 @@ from scipy.optimize import linprog
 
 
 RGB_WEIGHT = np.array([0.2989, 0.5870, 0.1140])
+SUPPORTED_L_PROFILES = [
+    "linear", 
+    "diverging",
+    "diverging_inverted",
+    "flat"
+]
 
 
 def load_json(cmap_name: str, n: int):
@@ -18,8 +24,13 @@ def load_json(cmap_name: str, n: int):
 
     # Adding .with_suffix() so the user can provide without the suffix
     file_path = file_path.with_suffix(".json")
-    with open(file_path) as json_file:
-        return json.load(json_file)
+    try:
+        with open(file_path) as json_file:
+            return json.load(json_file)
+    
+    except FileNotFoundError:
+        print(f"Colormap {cmap_name} not found in control point files.")
+        exit(1)
 
 
 def diverging_envelope(x: np.ndarray, c=4, x1=0.25):

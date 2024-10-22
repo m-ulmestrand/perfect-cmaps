@@ -14,6 +14,7 @@ def get_colormap(
         ijk: Tuple | None = None, 
         lightness: str | None = None
     ):
+    
     space = np.linspace(0, 1, n)
 
     if not cmap_name in CMAP_DICT.keys():
@@ -22,6 +23,8 @@ def get_colormap(
 
         if lightness is None:
             lightness = json_data["lightness"]
+        else:
+            assert lightness in SUPPORTED_L_PROFILES, f"Lightness profile {lightness} not supported"
 
         interpolated_values = interpolate_lab(control_points, n, lightness)
         rgb_values, _, _ = rgb_renormalized_lightness(interpolated_values, lightness)
