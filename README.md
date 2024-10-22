@@ -7,3 +7,4 @@ Here's an example of my colormap optimizer script, where you can draw your own c
 
 https://github.com/user-attachments/assets/2de077f7-776d-49b3-a8c0-564f42e4baed
 
+These custom generated colormaps are theoretically perceptually uniform, but note that some screen settings may show colormap artifacts, making the colormaps appear less perceptually uniform. This may happen at lower lighting, for example.
