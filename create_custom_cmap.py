@@ -6,9 +6,12 @@ from matplotlib.colors import ListedColormap
 from matplotlib.widgets import RadioButtons
 from pathlib import Path
 import json
-from scipy.interpolate import interp1d
-from color_utils import rgb_to_grayscale_lightness, interpolate_lab, rgb_renormalized_lightness, rgb_renormalized_lightness
-
+from color_utils import (
+    rgb_to_grayscale_lightness, 
+    interpolate_lab, 
+    rgb_renormalized_lightness, 
+    rgb_renormalized_lightness
+)
 
 # Generate a grid of sRGB values
 steps = 128  # Adjust for desired granularity (higher value = more data points)
