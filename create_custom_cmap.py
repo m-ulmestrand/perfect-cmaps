@@ -137,12 +137,12 @@ def update_gradient_plot(rgb_colors, ax_rgb, ax_gray):
 
     ax_rgb.clear()
     ax_rgb.imshow(gradient, aspect='auto', cmap=cmap)
-    ax_rgb.set_title('Perceptually Linear Colormap')
+    ax_rgb.set_title('Perceptually uniform Colormap')
     ax_rgb.axis('off')
 
     ax_gray.clear()
     ax_gray.imshow(gradient, aspect='auto', cmap=greyscale_cmap)
-    ax_gray.set_title('Greyscale Colormap')
+    ax_gray.set_title('Greyscale colormap')
     ax_gray.axis('off')
 
     # Redraw the figure
