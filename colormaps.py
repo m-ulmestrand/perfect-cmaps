@@ -5,16 +5,43 @@ from matplotlib import colormaps
 import numpy as np
 from typing import Tuple
 from color_utils import *
-from argparse import ArgumentParser
+import argparse
 
 
 def get_colormap(
         cmap_name: str, 
-        n: int, 
+        n: int = 100, 
         ijk: Tuple | None = None, 
         lightness: str | None = None
-    ):
+    ) -> mcolors.LinearSegmentedColormap:
     
+    """Function for getting custom colormaps. 
+    Two algorithmically generated colormaps are currently available:
+    - 'cold_blood' a.k.a 'ectotherm'
+    - 'copper_salt'
+
+    Additionally, several control points in Lab format are also available in the "lab_control_points" folder.
+    These are custom generated through the script 'create_custom_cmap', and consist of a collection 
+    points from 'a' and 'b' channels in Lab, along with a lightness profile.
+    These points are used in an optimization task, which optimizes the envelope for maximal expressiveness.
+
+    You can change the lightness profile in this script by choosing a lightness profile,
+    but note that the optimization task might not be feasible for certain lightness profiles.
+
+    Args:
+        cmap_name (str): The name of the colormap, either from the control points folder,
+            or the two algorithmically generated colormaps.
+        n (int): Number of points in the colormap sequence.
+        ijk (Tuple | None, optional): Order of the channels for the two algorithmic colormaps.
+            Typically you would choose a permutation of (0, 1, 2), such as (2, 1, 0). 
+            Defaults to None, which amounts to the default permutation of the colormaps.
+        lightness (str | None, optional): Lightness profile - only applies for the Lab
+            control points. Defaults to None, which means the lightness profile 
+            the chosen colormap was saved with.
+
+    Returns:
+        mcolors.LinearSegmentedColormap: Matplotlib-formatted colormap
+    """
     space = np.linspace(0, 1, n)
 
     if not cmap_name in CMAP_DICT.keys():
@@ -48,7 +75,7 @@ CMAP_DICT = {
 
 
 def parse_args():
-    arg_parser = ArgumentParser()
+    arg_parser = argparse.ArgumentParser(add_help=False)
     arg_parser.add_argument(
         "--colormap", 
         "-c", 
@@ -70,6 +97,14 @@ def parse_args():
         default=None, 
         help="The lightness profile of the colormap. Allowed values are: " + 
              "linear, diverging, diverging_inverted, flat."
+    )
+    arg_parser.add_argument(
+        "--help", 
+        "-h", 
+        action="help", 
+        default=argparse.SUPPRESS,
+        help="Python script for colormap handling with perceptually uniform colormaps. " +
+             "Run as a standalone script or import and use the function 'get_colormap' in your own scripts."
     )
     return arg_parser.parse_args()
 
@@ -101,14 +136,14 @@ if __name__ == "__main__":
     ax2 = fig.add_subplot(gs[:, 1])  # Right subplot spanning both rows
 
     # Plot RGB gradient on ax0
-    ax0.imshow(gradient_rgb, aspect='auto', vmin=0.0, vmax=1.0)
-    ax0.set_title('RGB gradient', fontsize=20)
-    ax0.axis('off')
+    ax0.imshow(gradient_rgb, aspect="auto", vmin=0.0, vmax=1.0)
+    ax0.set_title("RGB gradient", fontsize=20)
+    ax0.axis("off")
 
     # Plot Grayscale gradient on ax1
-    ax1.imshow(gradient_gray, cmap='gray', aspect='auto', vmin=0.0, vmax=1.0)
-    ax1.set_title('Lightness gradient', fontsize=20)
-    ax1.axis('off')
+    ax1.imshow(gradient_gray, cmap="gray", aspect="auto", vmin=0.0, vmax=1.0)
+    ax1.set_title("Lightness gradient", fontsize=20)
+    ax1.axis("off")
 
     # Plot the color channels and luminance on ax2
     for c, color_string in zip(range(3), ["red", "green", "blue"]):
