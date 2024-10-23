@@ -68,7 +68,17 @@ def unwrap_channels(ijk: Tuple | None = None):
     return ijk
 
 
-def cold_blood(x, ijk: Tuple | None = None):
+def linearize_rgba(rgba_colors: np.ndarray):
+    lab_colors = XYZ_to_Lab(sRGB_to_XYZ(rgba_colors[:, :3]))
+    lab_colors[:, 0] = np.linspace(0, 100, lab_colors.shape[0])
+    rgb_colors_renormalized = Lab_to_sRGB(lab_colors)
+    rgb_colors_renormalized = np.concatenate(
+        (rgb_colors_renormalized, rgba_colors[:, 3:4]), axis=1
+    )
+    return rgb_colors_renormalized
+
+
+def cold_blood(x: np.ndarray, ijk: Tuple | None = None):
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
@@ -84,7 +94,12 @@ def cold_blood(x, ijk: Tuple | None = None):
     return result
 
 
-def copper_salt(x, ijk: Tuple | None = None):
+def cold_blood_l(x: np.ndarray, ijk: Tuple | None = None):
+    normal_colors = cold_blood(x, ijk)
+    return linearize_rgba(normal_colors)
+
+
+def copper_salt(x: np.ndarray, ijk: Tuple | None = None):
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
