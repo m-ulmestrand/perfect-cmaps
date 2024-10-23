@@ -6,6 +6,7 @@ import numpy as np
 from typing import Tuple
 from color_utils import *
 import argparse
+import cv2
 
 
 def get_colormap(
@@ -17,9 +18,11 @@ def get_colormap(
     
     """Function for getting custom colormaps. 
     Two algorithmically generated colormaps are currently available:
-    - 'cold_blood' a.k.a 'ectotherm'
-    - 'copper_salt'
-
+        - 'cold_blood' a.k.a 'ectotherm'
+        - 'copper_salt'
+    The 'cold_blood' also has variants with completely linear lightness: 
+        - 'cold_blood_l', or 'ectotherm_l'.
+        
     Additionally, several control points in Lab format are also available in the "lab_control_points" folder.
     These are custom generated through the script 'create_custom_cmap', and consist of a collection 
     points from 'a' and 'b' channels in Lab, along with a lightness profile.
@@ -67,9 +70,33 @@ def get_colormap(
     return cmp
 
 
+def plot_images_with_colormap(image_paths, colormap='viridis'):
+    # Create a figure with two rows, one for greyscale and one for colormap images
+    num_images = len(image_paths)
+    
+    fig, axs = plt.subplots(2, num_images)
+    
+    for idx, img_path in enumerate(image_paths):
+        # Load the image in greyscale
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        
+        # Display the greyscale image
+        axs[0, idx].imshow(img, cmap='gray')
+        axs[0, idx].axis('off')
+        
+        # Display the image with the specified colormap
+        axs[1, idx].imshow(img, cmap=colormap)
+        axs[1, idx].axis('off')
+    
+    plt.tight_layout()
+    plt.show()
+
+
 CMAP_DICT = {
     "cold_blood": cold_blood,
+    "cold_blood_l": cold_blood_l,
     "ectotherm": cold_blood,
+    "ectotherm_l": cold_blood_l,
     "copper_salt": copper_salt
 }
 
@@ -155,13 +182,17 @@ if __name__ == "__main__":
     ax2.legend(loc=0, fontsize=20)
     plt.show()
 
-    test_image = Path(__file__).parent / "test_images" / "DEM3.gif"
-    dem_data = plt.imread(test_image)
-    
-    if len(dem_data.shape) == 3:
-        dem_data = dem_data[:, :, 0]
-        
-    plt.imshow(dem_data, cmap=cmap)
-    plt.title("Example digital elevation data", fontsize=20)
-    plt.colorbar()
-    plt.show()
+    test_image_path = Path(__file__).parent / "test_images"
+    test_images = [
+        "bacterial colony 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "cilia and microvilli 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "salt and pepper 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "electric cable 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "frt saw blade 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "pollen 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "sugar grains 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
+        "nylon tights 950x750.png_SIA_JPG_fit_to_width_XL.jpg"
+    ]
+
+    test_images = [test_image_path / img_name for img_name in test_images]
+    plot_images_with_colormap(test_images, cmap)
