@@ -3,25 +3,28 @@ from matplotlib import pyplot as plt
 from matplotlib import colormaps
 
 import numpy as np
-from typing import Tuple
+from typing import Tuple, List
 from color_utils import *
 import argparse
 import cv2
+from scipy.ndimage import gaussian_filter
 
 
 def get_colormap(
         cmap_name: str, 
         n: int = 100, 
         ijk: Tuple | None = None, 
-        lightness: str | None = None
+        lightness: str | None = None,
+        interpolation: str = "quadratic",
+        smoothing: float | None = None
     ) -> mcolors.LinearSegmentedColormap:
     
     """Function for getting custom colormaps. 
     Two algorithmically generated colormaps are currently available:
-        - 'cold_blood' a.k.a 'ectotherm'
+        - 'cold_blooded' a.k.a 'ectotherm'
         - 'copper_salt'
-    The 'cold_blood' also has variants with completely linear lightness: 
-        - 'cold_blood_l', or 'ectotherm_l'.
+    The 'cold_blooded' map also has variants with completely linear lightness: 
+        - 'cold_blooded_l', or 'ectotherm_l'.
         
     Additionally, several control points in Lab format are also available in the "lab_control_points" folder.
     These are custom generated through the script 'create_custom_cmap', and consist of a collection 
@@ -41,6 +44,9 @@ def get_colormap(
         lightness (str | None, optional): Lightness profile - only applies for the Lab
             control points. Defaults to None, which means the lightness profile 
             the chosen colormap was saved with.
+        interpolation (str): Interpolation method for L values. Defaults to 'quadratic.'
+        smoothing (float | None): Gaussian smoothing of colormap in Lab space, 
+            applied after interpolation. Defaults to None.
 
     Returns:
         mcolors.LinearSegmentedColormap: Matplotlib-formatted colormap
@@ -56,10 +62,28 @@ def get_colormap(
         else:
             assert lightness in SUPPORTED_L_PROFILES, f"Lightness profile {lightness} not supported"
 
-        interpolated_values = interpolate_lab(control_points, n, lightness)
-        rgb_values, _, _ = rgb_renormalized_lightness(interpolated_values, lightness)
+        interpolated_values = interpolate_lab(control_points, n, lightness, interpolation)
+        if smoothing is not None and smoothing > 0.0:
+            sigma = smoothing * n
+            interpolated_values[:, 1:] = gaussian_filter(interpolated_values[:, 1:], sigma=sigma, axes=0)
+
+        rgb_values, _, _ = rgb_renormalized_lightness(interpolated_values, lightness, 500, 500)
+    
     else:
-        rgb_values = CMAP_DICT[cmap_name](space, ijk)
+        color_function = CMAP_DICT[cmap_name]
+        rgb_values = color_function(space, ijk)
+        reoptimize_map = False
+        
+        if color_function in (cold_blooded_l, cold_blooded) and lightness == "linear":
+            reoptimize_map = False
+        
+        elif lightness is not None:
+            reoptimize_map = True
+
+        if reoptimize_map:
+            lab_values = XYZ_to_Lab(sRGB_to_XYZ(rgb_values[:, :3]))
+            lab_values[:, 0] = get_lightness_profile(n, lightness)
+            rgb_values, _, _ = rgb_renormalized_lightness(lab_values, lightness, 200, 500)
     
     cdict = dict()
 
@@ -70,18 +94,19 @@ def get_colormap(
     return cmp
 
 
-def plot_images_with_colormap(image_paths, colormap='viridis'):
+def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
     # Create a figure with two rows, one for greyscale and one for colormap images
     num_images = len(image_paths)
     
-    fig, axs = plt.subplots(2, num_images)
+    fig, axs = plt.subplots(2, num_images, figsize=(25, 10))
     
     for idx, img_path in enumerate(image_paths):
         # Load the image in greyscale
         img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img = img[:int(img.shape[0] * 0.94)]
         
         # Display the greyscale image
-        axs[0, idx].imshow(img, cmap='gray')
+        axs[0, idx].imshow(img, cmap='gray', vmin=0, vmax=255)
         axs[0, idx].axis('off')
         
         # Display the image with the specified colormap
@@ -90,15 +115,6 @@ def plot_images_with_colormap(image_paths, colormap='viridis'):
     
     plt.tight_layout()
     plt.show()
-
-
-CMAP_DICT = {
-    "cold_blood": cold_blood,
-    "cold_blood_l": cold_blood_l,
-    "ectotherm": cold_blood,
-    "ectotherm_l": cold_blood_l,
-    "copper_salt": copper_salt
-}
 
 
 def parse_args():
@@ -126,23 +142,73 @@ def parse_args():
              "linear, diverging, diverging_inverted, flat."
     )
     arg_parser.add_argument(
+        "--interpolation",
+        "-i",
+        type=str,
+        default="quadratic",
+        help="Interpolation method for Lab control points"
+    )
+    arg_parser.add_argument(
+        "--ijk",
+        type=int,
+        nargs='+',
+        default=(0, 1, 2),
+        help="Channel permutation for algorithmically generated colormaps"
+    )
+    arg_parser.add_argument(
+        "--smoothing",
+        "-s",
+        type=float,
+        default=None,
+        help="Gaussian smoothing of colormap in Lab space, applied after interpolation"
+    )
+    arg_parser.add_argument(
+        "--mpl_cmap",
+        "-mpl",
+        action="store_true",
+        default=False,
+        help="If specified, looks for a matplotlib colormap instead of one made with this library"
+    )
+    arg_parser.add_argument(
         "--help", 
         "-h", 
         action="help", 
         default=argparse.SUPPRESS,
         help="Python script for colormap handling with perceptually uniform colormaps. " +
-             "Run as a standalone script or import and use the function 'get_colormap' in your own scripts."
+             "Run as a standalone script or import and use the function 'get_colormap' in your own code."
     )
     return arg_parser.parse_args()
 
 
+CMAP_DICT = {
+    "cold_blooded": cold_blooded,
+    "cold_blooded_l": cold_blooded_l,
+    "ectotherm": cold_blooded,
+    "ectotherm_l": cold_blooded_l,
+    "copper_salt": copper_salt
+}
+
+
+"""
+If used as a main script, you can try colormaps out on test images, 
+and inspect the RGB channel profile of the colormap along with lightness and luminance.
+"""
 if __name__ == "__main__":
     args = parse_args()
-    n = args.num_points
-    cmap = get_colormap(args.colormap, n, lightness=args.lightness)
-    # cmap = colormaps["cividis"]
+    
+    if args.mpl_cmap:
+        cmap = colormaps[args.colormap]
+    else:
+        cmap = get_colormap(
+            args.colormap, 
+            args.num_points, 
+            ijk=args.ijk,
+            lightness=args.lightness, 
+            interpolation=args.interpolation,
+            smoothing=args.smoothing
+        )
 
-    gradient = np.linspace(0, 1, n)
+    gradient = np.linspace(0, 1, args.num_points)
     gradient = np.vstack((gradient, gradient))
 
     # Get RGB values from colormap
@@ -155,12 +221,13 @@ if __name__ == "__main__":
 
     # Plotting
     fig = plt.figure(figsize=(20, 10), constrained_layout=True)
-    gs = fig.add_gridspec(2, 2)
+    gs = fig.add_gridspec(3, 2)
 
     # Define the axes
     ax0 = fig.add_subplot(gs[0, 0])  # Top-left subplot
-    ax1 = fig.add_subplot(gs[1, 0])  # Bottom-left subplot
-    ax2 = fig.add_subplot(gs[:, 1])  # Right subplot spanning both rows
+    ax1 = fig.add_subplot(gs[1, 0])  # Mid-left subplot
+    ax2 = fig.add_subplot(gs[2, 0])  # Bottom-left subplot
+    ax3 = fig.add_subplot(gs[:, 1])  # Right subplot spanning all rows
 
     # Plot RGB gradient on ax0
     ax0.imshow(gradient_rgb, aspect="auto", vmin=0.0, vmax=1.0)
@@ -172,27 +239,31 @@ if __name__ == "__main__":
     ax1.set_title("Lightness gradient", fontsize=20)
     ax1.axis("off")
 
+    test_image_path = Path(__file__).parent / "test_images"
+    colormap_test_img_path = test_image_path / "colourmaptest.tif"
+    colormap_test_image = plt.imread(colormap_test_img_path)
+    ax2.imshow(colormap_test_image, cmap=cmap)
+    ax2.set_title("Colormap test image", fontsize=20)
+    ax2.axis("off")
+
     # Plot the color channels and luminance on ax2
     for c, color_string in zip(range(3), ["red", "green", "blue"]):
-        ax2.plot(gradient_rgb[0, :, c], color=color_string, label=color_string, linewidth=4)
+        ax3.plot(gradient_rgb[0, :, c], color=color_string, label=color_string, linewidth=4)
 
-    ax2.plot(lightness, color="grey", linestyle="--", label="lightness", linewidth=4)
-    ax2.plot(luminance, color="black", label="luminance")
-    ax2.set_title("Color channel intensities", fontsize=20)
-    ax2.legend(loc=0, fontsize=20)
+    ax3.plot(luminance, color="black", linestyle="-.", label="luminance")
+    ax3.plot(lightness, color="grey", label="lightness", linewidth=4)
+    ax3.set_title("Color channel intensities", fontsize=20)
+    ax3.legend(loc=0, fontsize=20)
     plt.show()
 
-    test_image_path = Path(__file__).parent / "test_images"
     test_images = [
-        "bacterial colony 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "cilia and microvilli 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "salt and pepper 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "electric cable 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "frt saw blade 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "pollen 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "sugar grains 950x750.png_SIA_JPG_fit_to_width_XL.jpg",
-        "nylon tights 950x750.png_SIA_JPG_fit_to_width_XL.jpg"
+        "charcoal4_49721153188_o-scaled.jpg",
+        "Lily-Pollen.png",
+        "melamine-foam_49722002717_o-scaled.jpg",
+        "PhenomPharos-Gallery_Pyrite.jpg",
+        "PhenomXLGallery_5.jpg",
+        "Steel-mesh.png"
     ]
 
-    test_images = [test_image_path / img_name for img_name in test_images]
+    test_images = [test_image_path / "sem" / img_name for img_name in test_images]
     plot_images_with_colormap(test_images, cmap)
