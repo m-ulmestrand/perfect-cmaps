@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from colour import sRGB_to_XYZ, XYZ_to_Lab
 from matplotlib.colors import ListedColormap
 from matplotlib.widgets import RadioButtons
 from pathlib import Path
@@ -13,71 +12,25 @@ from color_utils import (
     rgb_renormalized_lightness
 )
 
-# Generate a grid of sRGB values
-steps = 128  # Adjust for desired granularity (higher value = more data points)
-r = np.linspace(0, 1, steps)
-g = np.linspace(0, 1, steps)
-b = np.linspace(0, 1, steps)
 
-R, G, B = np.meshgrid(r, g, b)
-RGB = np.stack((R.flatten(), G.flatten(), B.flatten()), axis=-1)
-
-XYZ = sRGB_to_XYZ(RGB)
-Lab = XYZ_to_Lab(XYZ)
-
-# Store RGB and Lab values in a DataFrame
-data = pd.DataFrame({
-    'R': RGB[:, 0],
-    'G': RGB[:, 1],
-    'B': RGB[:, 2],
-    'L': Lab[:, 0],
-    'a': Lab[:, 1],
-    'b': Lab[:, 2]
-})
-
-data.drop_duplicates(subset=['L', 'a', 'b'], inplace=True)
-
-n_bins = 200  # Adjust as needed for resolution
-a_bins = np.linspace(-100, 100, n_bins + 1)
-b_bins = np.linspace(-100, 100, n_bins + 1)
-
-# Assign each data point to a bin
-data['a_bin'] = np.digitize(data['a'], a_bins) - 1  # bins are 0-indexed
-data['b_bin'] = np.digitize(data['b'], b_bins) - 1
-
-# Filter out data points that are outside the bins
-data = data[(data['a_bin'] >= 0) & (data['a_bin'] < n_bins) &
-            (data['b_bin'] >= 0) & (data['b_bin'] < n_bins)]
-
-grouped = data.groupby(['a_bin', 'b_bin'], as_index=False)
-max_L_df = grouped.apply(lambda x: x.loc[x['L'].idxmax()])
-
-max_L_array = np.full((n_bins, n_bins), np.nan)
-rgb_array = np.zeros((n_bins, n_bins, 3))
-
-for _, row in max_L_df.iterrows():
-    a_idx = int(row['a_bin'])
-    b_idx = int(row['b_bin'])
-    max_L_array[a_idx, b_idx] = row['L']
-    rgb_array[a_idx, b_idx, :] = [row['R'], row['G'], row['B']]
-
-a_centers = (a_bins[:-1] + a_bins[1:]) / 2
-b_centers = (b_bins[:-1] + b_bins[1:]) / 2
-extent = [a_bins[0], a_bins[-1], b_bins[0], b_bins[-1]]
+root_dir = Path(__file__).parent
+extent = [-100, 100, -100, 100]
 
 # Plot the results
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 
 # Plot the Max L* Intensity image
 ax1 = axs[0, 0]
-im1 = ax1.imshow(max_L_array.T, extent=extent, origin='lower', cmap='gray', aspect='auto')
+max_L_array = np.load(root_dir / "data" / "cielab_gamut_max_L.npy")
+im1 = ax1.imshow(max_L_array, extent=extent, origin='lower', cmap='gray', aspect='equal')
 ax1.set_title('Max L* Intensity for (a*, b*) pairs')
 ax1.set_xlabel('a* values')
 ax1.set_ylabel('b* values')
 
 # Plot the Brightest RGB Colors image
 ax2 = axs[0, 1]
-im2 = ax2.imshow(rgb_array.transpose(1, 0, 2), extent=extent, origin='lower', aspect='auto')
+max_L_array_RGB = np.load(root_dir / "data" / "cielab_gamut_max_L_RGB.npy")
+im2 = ax2.imshow(max_L_array_RGB, extent=extent, origin='lower', aspect='equal')
 ax2.set_title('Brightest RGB Colors for (a*, b*) pairs')
 ax2.set_xlabel('a* values')
 ax2.set_ylabel('b* values')
@@ -86,7 +39,7 @@ plt.subplots_adjust(left=0.25, right=0.95, top=0.95, bottom=0.05)
 rax = plt.axes([0.02, 0.4, 0.2, 0.15])
 
 # Define the labels for the RadioButtons
-lightness_profiles = ('Linear', 'Diverging', "Diverging_inverted", 'Flat')
+lightness_profiles = ('Linear', 'Diverging', "Diverging_sharper", "Diverging_inverted", "Diverging_inverted_sharper", 'Flat')
 
 # Create the RadioButtons
 radio = RadioButtons(rax, lightness_profiles)
@@ -154,7 +107,7 @@ def onclick(event):
         ax2.plot(x, y, 'ro', markersize=5)
         plt.draw()
         # Update the gradient plot if enough points
-        if len(clicked_points) >= 4:
+        if len(clicked_points) >= 3:
             update_colormap(event)
 
 radio.on_clicked(update_colormap)
