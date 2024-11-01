@@ -8,6 +8,7 @@ import json
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from scipy.optimize import bisect
 from scipy.optimize import linprog
+from optimization import genetic_algorithm
 
 
 RGB_WEIGHT = np.array([0.2989, 0.5870, 0.1140])
@@ -15,11 +16,13 @@ SUPPORTED_L_PROFILES = [
     "linear", 
     "diverging",
     "diverging_inverted",
+    "diverging_sharper",
+    "diverging_inverted_sharper",
     "flat"
 ]
 
 
-def load_json(cmap_name: str, n: int):
+def load_json(cmap_name: str):
     file_path = Path(__file__).parent / "lab_control_points" / Path(cmap_name).name
 
     # Adding .with_suffix() so the user can provide without the suffix
@@ -33,7 +36,7 @@ def load_json(cmap_name: str, n: int):
         exit(1)
 
 
-def diverging_envelope(x: np.ndarray, c=4, x1=0.25):
+def diverging_envelope(x: np.ndarray, c=4, x1=0.25) -> np.ndarray:
     result = np.zeros(x.shape)
     m = x1 * (c - 2) / (1 - 2 * x1 + 1e-5)
 
@@ -61,14 +64,14 @@ def dying_cos(x, offset: float = 0.0):
     return result
 
 
-def unwrap_channels(ijk: Tuple | None = None):
+def unwrap_channels(ijk: Tuple | None = None) -> tuple:
     if ijk is None:
         ijk = (0, 1, 2)
     
     return ijk
 
 
-def linearize_rgba(rgba_colors: np.ndarray):
+def linearize_rgba(rgba_colors: np.ndarray) -> np.ndarray:
     lab_colors = XYZ_to_Lab(sRGB_to_XYZ(rgba_colors[:, :3]))
     lab_colors[:, 0] = np.linspace(0, 100, lab_colors.shape[0])
     rgb_colors_renormalized = Lab_to_sRGB(lab_colors)
@@ -78,7 +81,7 @@ def linearize_rgba(rgba_colors: np.ndarray):
     return rgb_colors_renormalized
 
 
-def cold_blood(x: np.ndarray, ijk: Tuple | None = None):
+def cold_blooded(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
@@ -94,12 +97,12 @@ def cold_blood(x: np.ndarray, ijk: Tuple | None = None):
     return result
 
 
-def cold_blood_l(x: np.ndarray, ijk: Tuple | None = None):
-    normal_colors = cold_blood(x, ijk)
+def cold_blooded_l(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
+    normal_colors = cold_blooded(x, ijk)
     return linearize_rgba(normal_colors)
 
 
-def copper_salt(x: np.ndarray, ijk: Tuple | None = None):
+def copper_salt(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
@@ -123,13 +126,24 @@ def copper_salt(x: np.ndarray, ijk: Tuple | None = None):
     return result
 
 
-def get_lightness_profile(n_values: int, profile: str = "linear"):
+def get_lightness_profile(n_values: int, profile: str = "linear") -> np.ndarray:
     if profile == "linear":
         L_values = np.linspace(0, 100, n_values)
-    elif profile == "diverging":
-        L_values = 100 - np.linspace(-10, 10, n_values) ** 2
-    elif profile == "diverging_inverted":
-        L_values = np.linspace(-10, 10, n_values) ** 2
+    elif profile.startswith("diverging"):
+        base_envelope = np.linspace(-10, 10, n_values)
+
+        if profile == "diverging":
+            L_values = 100 - base_envelope ** 2
+
+        elif profile == "diverging_sharper":
+            L_values = 100 - (base_envelope ** 2 + np.abs(base_envelope * 10)) / 2
+
+        elif profile == "diverging_inverted":
+            L_values = base_envelope ** 2
+        
+        elif profile == "diverging_inverted_sharper":
+            L_values = (base_envelope ** 2 + np.abs(base_envelope * 10)) / 2
+
     elif profile == "flat":
         # Use a flat lightness profile, e.g., L = 50
         L_values = np.full(n_values, 50)
@@ -140,24 +154,29 @@ def get_lightness_profile(n_values: int, profile: str = "linear"):
     return L_values
 
 
-def interpolate_lab(control_points: np.ndarray, num_values: int = 1000, profile: str = "linear"):
+def interpolate_lab(
+    control_points: np.ndarray, 
+    num_values: int = 1000, 
+    profile: str = "linear", 
+    interpolation: str = "quadratic"
+) -> np.ndarray:
     # Interpolate between the control points
     lab_colors = np.zeros((num_values, 3))
     space = np.linspace(0, 1, control_points.shape[0])
     for i in range(2):
-        interpolator = interp1d(space, control_points[:, i], kind='cubic')
+        interpolator = interp1d(space, control_points[:, i], kind=interpolation)
         lab_colors[:, i + 1] = interpolator(np.linspace(0, 1, num_values))
 
     lab_colors[:, 0] = get_lightness_profile(num_values, profile)
     return lab_colors
 
 
-def rgb_to_grayscale(rgb: np.ndarray):
+def rgb_to_grayscale(rgb: np.ndarray) -> np.ndarray:
     """Convert RGB values to grayscale using luminosity values of RGB channels."""
     return np.sqrt(np.dot(rgb[...,:3] ** 2, RGB_WEIGHT))
 
 
-def rgb_to_grayscale_lightness(rgb: np.ndarray):
+def rgb_to_grayscale_lightness(rgb: np.ndarray) -> np.ndarray:
     """
     Convert RGB values to grayscale values representing perceived lightness (L*).
 
@@ -189,14 +208,20 @@ def rgb_to_grayscale_lightness(rgb: np.ndarray):
     return L_normalized
 
 
-def truncate_colormap(cmap: mcolors.LinearSegmentedColormap, minval: float = 0.0, maxval: float = 1.0, n: int = 1000):
+def truncate_colormap(
+        cmap: mcolors.LinearSegmentedColormap, 
+        minval: float = 0.0, 
+        maxval: float = 1.0, 
+        n: int = 1000
+    ) -> mcolors.LinearSegmentedColormap:
+
     new_cmap = mcolors.LinearSegmentedColormap.from_list(
         'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
         cmap(np.linspace(minval, maxval, n)))
     return new_cmap
 
 
-def Lab_to_sRGB(lab_colors: np.ndarray):
+def Lab_to_sRGB(lab_colors: np.ndarray) -> np.ndarray:
     """
     Convert CIE-LAB colors to sRGB color space.
     
@@ -219,7 +244,7 @@ def Lab_to_sRGB(lab_colors: np.ndarray):
     return RGB
 
 
-def find_valid_L_range_slow(a_star: float, b_star: float, L_initial: int = 50):
+def find_valid_L_range_slow(a_star: float, b_star: float, L_initial: int = 50) -> Tuple[float, float]:
     """
     Find the valid L* range for a given a* and b* such that the Lab color
     maps to valid RGB colors without clipping.
@@ -263,7 +288,7 @@ def find_valid_L_range_slow(a_star: float, b_star: float, L_initial: int = 50):
     return L_min_valid, L_max_valid
 
 
-def find_valid_L_range(a_star: float, b_star: float):
+def find_valid_L_range(a_star: float, b_star: float) -> Tuple[float, float]:
     # Vectorized L* samples
     L_samples = np.linspace(0, 100, 100)
     # Create an array of Lab colors
@@ -286,7 +311,7 @@ def find_valid_L_range(a_star: float, b_star: float):
     return L_min_valid, L_max_valid
 
 
-def find_valid_L_range_coarse_optim(a_star: float, b_star: float):
+def find_valid_L_range_coarse_optim(a_star: float, b_star: float) -> Tuple[float, float]:
     # Coarse sampling
     L_samples_coarse = np.linspace(0, 100, 50)
     lab_coarse = np.column_stack((L_samples_coarse, np.full_like(L_samples_coarse, a_star), np.full_like(L_samples_coarse, b_star)))
@@ -342,7 +367,7 @@ def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, ligh
 
         # Variable bounds
         bounds = [
-            (0, 1),      # m >= 0
+            (0, None),      # m >= 0
             (-100, 100)  # c between -100 and 100
         ]
     else:
@@ -364,7 +389,7 @@ def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, ligh
 
         # Variable bounds
         bounds = [
-            (0, 2)  # m >= 0
+            (0, None)  # m >= 0
         ]
 
         c_opt = 0  # c is fixed to zero
@@ -389,7 +414,13 @@ def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, ligh
         raise ValueError("Optimization infeasible for the chosen lightness profile")
 
 
-def rgb_renormalized_lightness(lab_colors: np.ndarray, lightness_profile: str | None = None):
+def rgb_renormalized_lightness(
+    lab_colors: np.ndarray, 
+    lightness_profile: str | None = None, 
+    population_size: int = 100, 
+    num_generations: int = 200
+) -> np.ndarray:
+    
     # Compute L_min and L_max for each color
     n_colors = lab_colors.shape[0]
     L_min = np.zeros(n_colors)
@@ -404,10 +435,19 @@ def rgb_renormalized_lightness(lab_colors: np.ndarray, lightness_profile: str | 
     L_intended = lab_colors[:, 0]
 
     # Optimize m and c
-    L_adjusted, m_opt, c_opt = optimize_parameters(L_intended, L_min, L_max, lightness_profile)
+    gene_limits = np.array([[0.0, 1.0], [-100.0, 100.0]])
+    genes, best_fitness = genetic_algorithm(population_size, num_generations, gene_limits, L_intended, L_min, L_max)
+
+    if best_fitness == 0.0:
+        print("Optimization failed for chosen lightness profile.")
+        print("Colormap is not perfectly perceptually uniform.")
+        return Lab_to_sRGB(lab_colors), 1.0, 0.0
+    
+    print(f"Optimized colormap lightness range: {100 * best_fitness:.2f} %")
+    L_adjusted = L_intended * genes[0] + genes[1]
 
     # Update L* values in lab_colors
     lab_colors[:, 0] = L_adjusted
 
     # Convert adjusted Lab colors to RGB
-    return Lab_to_sRGB(lab_colors), m_opt, c_opt
+    return Lab_to_sRGB(lab_colors), genes[0], genes[1]

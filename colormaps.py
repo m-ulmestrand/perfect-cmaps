@@ -54,7 +54,7 @@ def get_colormap(
     space = np.linspace(0, 1, n)
 
     if not cmap_name in CMAP_DICT.keys():
-        json_data = load_json(cmap_name, n)
+        json_data = load_json(cmap_name)
         control_points = np.array(json_data["points"])
 
         if lightness is None:
