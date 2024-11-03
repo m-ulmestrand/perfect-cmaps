@@ -10,13 +10,13 @@ def fitness_function(individual: np.ndarray, l_profile: np.ndarray, l_min: np.nd
     
     return 0.0
 
-def initialize_population(pop_size, gene_limits):
+def initialize_population(pop_size: int, gene_limits: np.ndarray):
     population = np.random.uniform(gene_limits[:, 0], gene_limits[:, 1], (pop_size, 2))
     return population
 
 # Selection of parents (tournament selection)
 @njit
-def tournament_selection(population, fitnesses, tournament_size):
+def tournament_selection(population: np.ndarray, fitnesses: np.ndarray, tournament_size: int):
     selected = np.zeros_like(population)
     pop_size = len(population)
     for i in range(pop_size):
@@ -26,14 +26,14 @@ def tournament_selection(population, fitnesses, tournament_size):
     return selected
 
 @njit
-def crossover(parent1, parent2):
+def crossover(parent1: np.ndarray, parent2: np.ndarray):
     alpha = np.random.rand()
     child1 = alpha * parent1 + (1 - alpha) * parent2
     child2 = alpha * parent2 + (1 - alpha) * parent1
     return child1, child2
 
 @njit
-def mutate(individual, gene_limits, mutation_rate=0.5):
+def mutate(individual: np.ndarray, gene_limits: np.ndarray, mutation_rate: float = 0.5):
     for i in range(2):
         if np.random.rand() < mutation_rate:
             individual[i] = np.random.uniform(gene_limits[i, 0], gene_limits[i, 1])
