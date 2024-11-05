@@ -35,6 +35,11 @@ The algorithmically created `ectotherm` colormap in fact covers 100 % of the per
 ![Ectotherm gradient](assets/ectotherm_gradient.png)
 ![Ectotherm examples](assets/ectotherm.png)
 
+You may have heard that standard RGB colormaps should be avoided. Well, common RGB colormaps are not perceptually uniform, but you just have to design them right, and they can be useful!
+
+![Spectrum gradient](assets/spectrum_gradient.png)
+![Spectrum examples](assets/spectrum.png)
+
 Thanks to *Nanoscience.com* for letting me use these images as examples! Find them at https://www.nanoscience.com/techniques/scanning-electron-microscopy/.
 
 These custom generated colormaps are theoretically perceptually uniform, but note that some screen settings may show colormap artifacts, making the colormaps appear less perceptually uniform. This may happen at lower computer screen lighting, for example.
