@@ -14,7 +14,8 @@ To test out your colormap, you can use the function `get_colormap()` or use the 
 
 `python colormaps.py --colormap test_colormap -n 1000 --interpolation quadratic --smoothing 0.03`
 
-Here' the colormap was named `test_colormap`, and we specify the colormap to have 1000 points, with quadratic interpolation and some amount of smoothing applied.
+Here' the colormap was named `test_colormap`, and we specify the colormap to have 1000 points, with quadratic interpolation and some amount of smoothing applied. 
+
 ![Generated colormap](assets/test_colormap.png)
 
 ### Test images 
