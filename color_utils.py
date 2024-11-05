@@ -416,9 +416,9 @@ def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, ligh
 
 def rgb_renormalized_lightness(
     lab_colors: np.ndarray, 
-    lightness_profile: str | None = None, 
     population_size: int = 100, 
-    num_generations: int = 200
+    num_generations: int = 200,
+    verbose: bool = False,
 ) -> np.ndarray:
     
     # Compute L_min and L_max for each color
@@ -435,7 +435,7 @@ def rgb_renormalized_lightness(
     L_intended = lab_colors[:, 0]
 
     # Optimize m and c
-    gene_limits = np.array([[0.0, 1.0], [-100.0, 100.0]])
+    gene_limits = np.array([[0.0, 100.0], [-100.0, 100.0]])
     genes, best_fitness = genetic_algorithm(population_size, num_generations, gene_limits, L_intended, L_min, L_max)
 
     if best_fitness == 0.0:
@@ -443,7 +443,9 @@ def rgb_renormalized_lightness(
         print("Colormap is not perfectly perceptually uniform.")
         return Lab_to_sRGB(lab_colors), 1.0, 0.0
     
-    print(f"Optimized colormap lightness range: {100 * best_fitness:.2f} %")
+    if verbose:
+        print(f"Optimized colormap lightness range: {100 * best_fitness:.2f} %")
+
     L_adjusted = L_intended * genes[0] + genes[1]
 
     # Update L* values in lab_colors
