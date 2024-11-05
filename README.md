@@ -37,4 +37,4 @@ The algorithmically created `ectotherm` colormap in fact covers 100 % of the per
 
 Thanks to *Nanoscience.com* for letting me use these images as examples! Find them at https://www.nanoscience.com/techniques/scanning-electron-microscopy/.
 
-These custom generated colormaps are theoretically perceptually uniform, but note that some screen settings may show colormap artifacts, making the colormaps appear less perceptually uniform. This may happen at lower lighting, for example.
+These custom generated colormaps are theoretically perceptually uniform, but note that some screen settings may show colormap artifacts, making the colormaps appear less perceptually uniform. This may happen at lower computer screen lighting, for example.
