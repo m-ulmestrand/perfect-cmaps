@@ -9,13 +9,16 @@ run: `python iterate_create_custom_cmap.py --num_points 21 --lightness linear` o
 
 https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
 
-### The final colormap looks like this:
+### Generated colormap
+To test out your colormap, you can use the function `get_colormap()` or use the main function from `colormaps.py`:
+`python colormaps.py --colormap test_colormap -n 1000 --interpolation quadratic --smoothing 0.03`
+Here' the colormap was named `test_colormap`, and we specify the colormap to have 1000 points, with quadratic interpolation and some amount of smoothing applied.
 ![Generated colormap](assets/test_colormap.png)
 
 ### Test images 
 ![Test images](assets/test_colormap_images.png)
 
-Here's a compilation of some colormaps generated with this library, compared with some standard colormaps available in `matplotlib`.:
+Here's a compilation of some colormaps generated with this library, compared with some standard colormaps available in `matplotlib`:
 ![Comparison](assets/cmap_comparison.png)
 
 The top two colormaps, `viridis` and `cividis` have a lower perceptual range, and thus look less clear -- almost like there's a filter on them. The colormaps generated with `perfect-cmaps` are crisper and offer a maximal perceptual range. Additionally, the perceptual limitation for the standard colormaps is especially visible when for example a background in grayscale is very white, in which case the standard colormaps are in this case yellow and clearly do not cover the entire lightness spectrum.
