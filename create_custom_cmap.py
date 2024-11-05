@@ -9,7 +9,6 @@ from color_utils import (
     rgb_to_grayscale_lightness, 
     interpolate_lab, 
     rgb_renormalized_lightness, 
-    rgb_renormalized_lightness
 )
 
 
@@ -93,7 +92,7 @@ def update_colormap(event):
         line_handle.remove()
     # Plot new line and store the line object
     line_handle, = ax2.plot(lab_colors[:, 1], lab_colors[:, 2], color="black")
-    rgb_colors, m, c = rgb_renormalized_lightness(lab_colors, lightness_profile)
+    rgb_colors, m, c = rgb_renormalized_lightness(lab_colors)
     rgb_colors = np.clip(rgb_colors, 0, 1)
     update_gradient_plot(rgb_colors, ax_rgb, ax_gray)
 
