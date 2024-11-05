@@ -35,7 +35,7 @@ The algorithmically created `ectotherm` colormap in fact covers 100 % of the per
 ![Ectotherm gradient](assets/ectotherm_gradient.png)
 ![Ectotherm examples](assets/ectotherm.png)
 
-You may have heard that standard RGB colormaps should be avoided. Well, common RGB colormaps are not perceptually uniform, but you just have to design them right, and they can be useful!
+You may have heard that standard RGB colormaps should be avoided. Well, common RGB colormaps are indeed not at all perceptually uniform, but if you design them right, you can still have a useful colormap with much color information, perceptual range and true perceptual uniformity.
 
 ![Spectrum gradient](assets/spectrum_gradient.png)
 ![Spectrum examples](assets/spectrum.png)
