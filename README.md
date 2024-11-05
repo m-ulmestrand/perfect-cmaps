@@ -18,7 +18,7 @@ https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
 Here's a compilation of some colormaps generated with this library, compared with some standard colormaps available in `matplotlib`.:
 ![Comparison](assets/cmap_comparison.png)
 
-The top two colormaps, `viridis` and `cividis` have a lower perceptual range, and thus look less clear -- almost like there's a filter on them. The colormaps generated with this library are crisper and offer a maximal perceptual range. Additionally, the perceptual limitation for the standard colormaps is especially visible when for example a background in grayscale is very white, in which case the standard colormaps are in this case yellow and clearly do not cover the entire lightness spectrum.
+The top two colormaps, `viridis` and `cividis` have a lower perceptual range, and thus look less clear -- almost like there's a filter on them. The colormaps generated with `perfect-cmaps` are crisper and offer a maximal perceptual range. Additionally, the perceptual limitation for the standard colormaps is especially visible when for example a background in grayscale is very white, in which case the standard colormaps are in this case yellow and clearly do not cover the entire lightness spectrum.
 
 ![Comparison2](assets/cmap_comparison2.png)
 
