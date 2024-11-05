@@ -67,7 +67,7 @@ def get_colormap(
             sigma = smoothing * n
             interpolated_values[:, 1:] = gaussian_filter(interpolated_values[:, 1:], sigma=sigma, axes=0)
 
-        rgb_values, _, _ = rgb_renormalized_lightness(interpolated_values, lightness, 500, 500)
+        rgb_values = rgb_renormalized_lightness(interpolated_values, 500, 500)
     
     else:
         color_function = CMAP_DICT[cmap_name]
@@ -83,7 +83,7 @@ def get_colormap(
         if reoptimize_map:
             lab_values = XYZ_to_Lab(sRGB_to_XYZ(rgb_values[:, :3]))
             lab_values[:, 0] = get_lightness_profile(n, lightness)
-            rgb_values, _, _ = rgb_renormalized_lightness(lab_values, lightness, 200, 500)
+            rgb_values, _, _ = rgb_renormalized_lightness(lab_values, 200, 500)
     
     cdict = dict()
 
@@ -99,6 +99,8 @@ def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
     num_images = len(image_paths)
     
     fig, axs = plt.subplots(2, num_images, figsize=(25, 10))
+    axs[0, 0].set_ylabel("Grayscale", fontsize=20)
+    axs[1, 0].set_ylabel("Viridis", fontsize=20)
     
     for idx, img_path in enumerate(image_paths):
         # Load the image in greyscale
@@ -107,11 +109,13 @@ def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
         
         # Display the greyscale image
         axs[0, idx].imshow(img, cmap='gray', vmin=0, vmax=255)
-        axs[0, idx].axis('off')
         
         # Display the image with the specified colormap
         axs[1, idx].imshow(img, cmap=colormap)
-        axs[1, idx].axis('off')
+        axs[0, idx].set_xticks([])
+        axs[0, idx].set_yticks([])
+        axs[1, idx].set_xticks([])
+        axs[1, idx].set_yticks([])
     
     plt.tight_layout()
     plt.show()
@@ -208,53 +212,7 @@ if __name__ == "__main__":
             smoothing=args.smoothing
         )
 
-    gradient = np.linspace(0, 1, args.num_points)
-    gradient = np.vstack((gradient, gradient))
-
-    # Get RGB values from colormap
-    gradient_rgb = cmap(gradient)
-
-    # Convert the RGB values to grayscale
-    lightness = rgb_to_grayscale_lightness(gradient_rgb[0][:, :3])
-    luminance = rgb_to_grayscale(gradient_rgb[0][:, :3])
-    gradient_gray = np.vstack((lightness, lightness))
-
-    # Plotting
-    fig = plt.figure(figsize=(20, 10), constrained_layout=True)
-    gs = fig.add_gridspec(3, 2)
-
-    # Define the axes
-    ax0 = fig.add_subplot(gs[0, 0])  # Top-left subplot
-    ax1 = fig.add_subplot(gs[1, 0])  # Mid-left subplot
-    ax2 = fig.add_subplot(gs[2, 0])  # Bottom-left subplot
-    ax3 = fig.add_subplot(gs[:, 1])  # Right subplot spanning all rows
-
-    # Plot RGB gradient on ax0
-    ax0.imshow(gradient_rgb, aspect="auto", vmin=0.0, vmax=1.0)
-    ax0.set_title("RGB gradient", fontsize=20)
-    ax0.axis("off")
-
-    # Plot Grayscale gradient on ax1
-    ax1.imshow(gradient_gray, cmap="gray", aspect="auto", vmin=0.0, vmax=1.0)
-    ax1.set_title("Lightness gradient", fontsize=20)
-    ax1.axis("off")
-
-    test_image_path = Path(__file__).parent / "test_images"
-    colormap_test_img_path = test_image_path / "colourmaptest.tif"
-    colormap_test_image = plt.imread(colormap_test_img_path)
-    ax2.imshow(colormap_test_image, cmap=cmap)
-    ax2.set_title("Colormap test image", fontsize=20)
-    ax2.axis("off")
-
-    # Plot the color channels and luminance on ax2
-    for c, color_string in zip(range(3), ["red", "green", "blue"]):
-        ax3.plot(gradient_rgb[0, :, c], color=color_string, label=color_string, linewidth=4)
-
-    ax3.plot(luminance, color="black", linestyle="-.", label="luminance")
-    ax3.plot(lightness, color="grey", label="lightness", linewidth=4)
-    ax3.set_title("Color channel intensities", fontsize=20)
-    ax3.legend(loc=0, fontsize=20)
-    plt.show()
+    plot_colormap(cmap, args.num_points)
 
     test_images = [
         "charcoal4_49721153188_o-scaled.jpg",
@@ -262,8 +220,8 @@ if __name__ == "__main__":
         "melamine-foam_49722002717_o-scaled.jpg",
         "PhenomPharos-Gallery_Pyrite.jpg",
         "PhenomXLGallery_5.jpg",
-        "Steel-mesh.png"
     ]
-
+    
+    test_image_path = Path(__file__).parent / "test_images"
     test_images = [test_image_path / "sem" / img_name for img_name in test_images]
     plot_images_with_colormap(test_images, cmap)

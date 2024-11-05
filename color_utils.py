@@ -9,6 +9,8 @@ from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from scipy.optimize import bisect
 from scipy.optimize import linprog
 from optimization import genetic_algorithm
+from matplotlib import pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 
 RGB_WEIGHT = np.array([0.2989, 0.5870, 0.1140])
@@ -452,4 +454,54 @@ def rgb_renormalized_lightness(
     lab_colors[:, 0] = L_adjusted
 
     # Convert adjusted Lab colors to RGB
-    return Lab_to_sRGB(lab_colors), genes[0], genes[1]
+    return Lab_to_sRGB(lab_colors)
+
+
+def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
+    gradient = np.linspace(0, 1, num_points)
+    gradient = np.vstack((gradient, gradient))
+
+    # Get RGB values from colormap
+    gradient_rgb = colormap(gradient)
+
+    # Convert the RGB values to grayscale
+    lightness = rgb_to_grayscale_lightness(gradient_rgb[0][:, :3])
+    luminance = rgb_to_grayscale(gradient_rgb[0][:, :3])
+    gradient_gray = np.vstack((lightness, lightness))
+
+    # Plotting
+    fig = plt.figure(figsize=(20, 10), constrained_layout=True)
+    gs = fig.add_gridspec(3, 2)
+
+    # Define the axes
+    ax0 = fig.add_subplot(gs[0, 0])  # Top-left subplot
+    ax1 = fig.add_subplot(gs[1, 0])  # Mid-left subplot
+    ax2 = fig.add_subplot(gs[2, 0])  # Bottom-left subplot
+    ax3 = fig.add_subplot(gs[:, 1])  # Right subplot spanning all rows
+
+    # Plot RGB gradient on ax0
+    ax0.imshow(gradient_rgb, aspect="auto", vmin=0.0, vmax=1.0)
+    ax0.set_title("RGB gradient", fontsize=20)
+    ax0.axis("off")
+
+    # Plot Grayscale gradient on ax1
+    ax1.imshow(gradient_gray, cmap="gray", aspect="auto", vmin=0.0, vmax=1.0)
+    ax1.set_title("Lightness gradient", fontsize=20)
+    ax1.axis("off")
+
+    test_image_path = Path(__file__).parent / "test_images"
+    colormap_test_img_path = test_image_path / "colourmaptest.tif"
+    colormap_test_image = plt.imread(colormap_test_img_path)
+    ax2.imshow(colormap_test_image, cmap=colormap)
+    ax2.set_title("Colormap test image", fontsize=20)
+    ax2.axis("off")
+
+    # Plot the color channels and luminance on ax2
+    for c, color_string in zip(range(3), ["red", "green", "blue"]):
+        ax3.plot(gradient_rgb[0, :, c], color=color_string, label=color_string, linewidth=4)
+
+    ax3.plot(luminance, color="black", linestyle="-.", label="luminance")
+    ax3.plot(lightness, color="grey", label="lightness", linewidth=4)
+    ax3.set_title("Color channel intensities", fontsize=20)
+    ax3.legend(loc=0, fontsize=20)
+    plt.show()

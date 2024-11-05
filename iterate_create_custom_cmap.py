@@ -1,11 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from numba import njit
 from pathlib import Path
 import json
 import argparse
-from color_utils import get_lightness_profile
+from scipy.ndimage import gaussian_filter
+from color_utils import (
+    get_lightness_profile, 
+    plot_colormap, 
+    rgb_renormalized_lightness, 
+    interpolate_lab
+)
 
 
 @njit
@@ -182,6 +189,21 @@ points_dict = {
     "lightness": args.lightness
 }
 
+num_points = 1000
+lab_points = interpolate_lab(clicked_points_array, num_values=num_points, profile=args.lightness)
+lab_points[:, 1:] = gaussian_filter(lab_points[:, 1:], sigma=num_points * 0.03, axes=0)
+rgb_points = rgb_renormalized_lightness(lab_points)
+
+cdict = dict()
+space = np.linspace(0, 1, num_points)
+
+for num, col in enumerate(["red", "green", "blue"]):
+    col_list = [[space[i], rgb_points[i][num], rgb_points[i][num]] for i in range(num_points)]
+    cdict[col] = col_list
+
+colormap = LinearSegmentedColormap("custom_colormap", segmentdata=cdict, N=num_points)
+plot_colormap(colormap, num_points)
+
 # Prompt user for colormap name
 cmap_name = input("\nEnter desired colormap name. Quit with 'q'.\nControl points are saved in folder ./lab_control_points.\nColormap name: ")
 if cmap_name.strip() == 'q':
@@ -189,7 +211,6 @@ if cmap_name.strip() == 'q':
 elif len(cmap_name.strip()) == 0:
     cmap_name = "custom_cmap"
 
-# Ensure unique filename
 file_path = Path(__file__).parent / "lab_control_points" / cmap_name
 parent_dir = file_path.parent
 new_file_name = file_path.stem
