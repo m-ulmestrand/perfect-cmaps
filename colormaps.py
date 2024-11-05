@@ -100,7 +100,7 @@ def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
     
     fig, axs = plt.subplots(2, num_images, figsize=(25, 10))
     axs[0, 0].set_ylabel("Grayscale", fontsize=20)
-    axs[1, 0].set_ylabel("Viridis", fontsize=20)
+    axs[1, 0].set_ylabel("Custom colormap", fontsize=20)
     
     for idx, img_path in enumerate(image_paths):
         # Load the image in greyscale
