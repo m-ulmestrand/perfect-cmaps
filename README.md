@@ -7,6 +7,8 @@ To stay as true as possible to the lightness achieved by a true grayscale colorm
 ### Example of creating a custom colormap
 run: `python iterate_create_custom_cmap.py --num_points 21 --lightness linear` or a similar command
 
+This specifies that your colormap will have 21 control points, which will later be interpolated for desired granularity, and that the colormap will have a linear lightness profile. 
+
 https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
 
 ### Generated colormap
