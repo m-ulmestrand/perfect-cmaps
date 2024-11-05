@@ -4,7 +4,8 @@ The project came up as a result of there being too few easily accessible percept
 
 To stay as true as possible to the lightness achieved by a true grayscale colormap, but add more information with colors, the perceptual range of colormaps is optimized to be as high as possible.
 
-### Here's an example of creating a custom colormap:
+### Example of creating a custom colormap
+run: `python iterate_create_custom_cmap.py --num_points 21 --lightness linear` or a similar command
 
 https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
 
