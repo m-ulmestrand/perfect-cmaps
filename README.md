@@ -40,6 +40,6 @@ You may have heard that standard RGB colormaps should be avoided. Well, common R
 ![Spectrum gradient](assets/spectrum_gradient.png)
 ![Spectrum examples](assets/spectrum.png)
 
-Thanks to *Nanoscience.com* for letting me use these images as examples! Find them at https://www.nanoscience.com/techniques/scanning-electron-microscopy/.
+Thanks to *Nanoscience.com* for letting me use the grayscale images as examples! Find them at https://www.nanoscience.com/techniques/scanning-electron-microscopy/.
 
 These custom generated colormaps are theoretically perceptually uniform, but note that some screen settings may show colormap artifacts, making the colormaps appear less perceptually uniform. This may happen at lower computer screen lighting, for example.
