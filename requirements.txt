@@ -3,3 +3,4 @@ pandas
 matplotlib
 colour-science==0.4.6
 scipy
+opencv-python-headless
