@@ -30,7 +30,7 @@ The top two colormaps, `viridis` and `cividis` have a lower perceptual range, an
 
 ![Comparison2](assets/cmap_comparison2.png)
 
-The algorithmically created `ectotherm` colormap in fact covers 100 % of the perceptual range, while adding more information through colors. It ranges from completely black to completely white, while adding colors in between and maintaining truly linearly increasing lightness. This is one of my favorites! The other two displayed custom colormaps mimic `viridis` and `cividis`, but with a higher perceptual range.
+The algorithmically created `ectotherm` colormap in fact covers 100 % of the perceptual range, while adding more information through colors. It ranges from completely black to completely white, while adding colors in between and maintaining truly linearly increasing lightness. This is one of my favorites! The other two displayed custom colormaps mimic `viridis` and `cividis`, but with a higher perceptual range. The standard `ectotherm` colormap is linear in luminance, whereas the `ectotherm_l` colormap is linear in lightness. I recommend the `ectotherm_l` colormap for general use.
 
 ![Ectotherm gradient](assets/ectotherm_gradient.png)
 ![Ectotherm examples](assets/ectotherm.png)
