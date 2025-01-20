@@ -13,10 +13,10 @@ from scipy.ndimage import gaussian_filter
 def get_colormap(
         cmap_name: str, 
         n: int = 100, 
-        ijk: Tuple | None = None, 
-        lightness: str | None = None,
+        ijk: Tuple = None, 
+        lightness: str = None,
         interpolation: str = "quadratic",
-        smoothing: float | None = None
+        smoothing: float = None
     ) -> mcolors.LinearSegmentedColormap:
     
     """Function for getting custom colormaps. 
@@ -38,14 +38,14 @@ def get_colormap(
         cmap_name (str): The name of the colormap, either from the control points folder,
             or the two algorithmically generated colormaps.
         n (int): Number of points in the colormap sequence.
-        ijk (Tuple | None, optional): Order of the channels for the two algorithmic colormaps.
+        ijk (Tuple, optional): Order of the channels for the two algorithmic colormaps.
             Typically you would choose a permutation of (0, 1, 2), such as (2, 1, 0). 
             Defaults to None, which amounts to the default permutation of the colormaps.
-        lightness (str | None, optional): Lightness profile - only applies for the Lab
+        lightness (str, optional): Lightness profile - only applies for the Lab
             control points. Defaults to None, which means the lightness profile 
             the chosen colormap was saved with.
         interpolation (str): Interpolation method for L values. Defaults to 'quadratic.'
-        smoothing (float | None): Gaussian smoothing of colormap in Lab space, 
+        smoothing (float): Gaussian smoothing of colormap in Lab space, 
             applied after interpolation. Defaults to None.
 
     Returns:
@@ -127,7 +127,7 @@ def parse_args():
         "--colormap", 
         "-c", 
         type=str, 
-        default="cold_blood", 
+        default="ectotherm_l", 
         help="The name of the colormap to be loaded"
     )
     arg_parser.add_argument(

@@ -3,11 +3,9 @@ import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union
 import json
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
-from scipy.optimize import bisect
-from scipy.optimize import linprog
 from optimization import genetic_algorithm
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -38,7 +36,7 @@ def load_json(cmap_name: str):
         exit(1)
 
 
-def diverging_envelope(x: np.ndarray, c=4, x1=0.25) -> np.ndarray:
+def diverging_envelope(x: np.ndarray, c: float = 4, x1: float = 0.25) -> np.ndarray:
     result = np.zeros(x.shape)
     m = x1 * (c - 2) / (1 - 2 * x1 + 1e-5)
 
@@ -59,14 +57,14 @@ def diverging_envelope(x: np.ndarray, c=4, x1=0.25) -> np.ndarray:
     return result
 
 
-def dying_cos(x, offset: float = 0.0):
+def dying_cos(x: np.ndarray, offset: float = 0.0):
     result = np.zeros_like(x)
     values = np.mod(np.round(x - offset), 2) == 0
     result[values] = (1 + np.cos(2*np.pi*(x[values]-offset)))/2
     return result
 
 
-def unwrap_channels(ijk: Tuple | None = None) -> tuple:
+def unwrap_channels(ijk: Union[Tuple[int, int, int], None] = None) -> tuple:
     if ijk is None:
         ijk = (0, 1, 2)
     
@@ -83,7 +81,7 @@ def linearize_rgba(rgba_colors: np.ndarray) -> np.ndarray:
     return rgb_colors_renormalized
 
 
-def cold_blooded(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
+def cold_blooded(x: np.ndarray, ijk: Union[Tuple[int, int, int], None] = None) -> np.ndarray:
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
@@ -99,12 +97,12 @@ def cold_blooded(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
     return result
 
 
-def cold_blooded_l(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
+def cold_blooded_l(x: np.ndarray, ijk: Union[Tuple[int, int, int], None] = None) -> np.ndarray:
     normal_colors = cold_blooded(x, ijk)
     return linearize_rgba(normal_colors)
 
 
-def copper_salt(x: np.ndarray, ijk: Tuple | None = None) -> np.ndarray:
+def copper_salt(x: np.ndarray, ijk: Union[Tuple[int, int, int], None] = None) -> np.ndarray:
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
@@ -246,50 +244,6 @@ def Lab_to_sRGB(lab_colors: np.ndarray) -> np.ndarray:
     return RGB
 
 
-def find_valid_L_range_slow(a_star: float, b_star: float, L_initial: int = 50) -> Tuple[float, float]:
-    """
-    Find the valid L* range for a given a* and b* such that the Lab color
-    maps to valid RGB colors without clipping.
-
-    Parameters
-    ----------
-    a_star : float
-        The a* component of Lab color.
-    b_star : float
-        The b* component of Lab color.
-
-    Returns
-    -------
-    L_min : float
-        The minimum L* value.
-    L_max : float
-        The maximum L* value.
-    """
-    # Define functions to check if Lab(L*, a*, b*) maps to valid RGB
-    def is_valid_rgb(L):
-        lab = np.array([L, a_star, b_star])
-        rgb = Lab_to_sRGB(lab)
-        return np.all((rgb >= 0) & (rgb <= 1))
-    
-    # Find L_min
-    L_min = 0
-    L_max_possible = 100
-    if is_valid_rgb(L_min):
-        L_min_valid = L_min
-    else:
-        # Use bisection to find L_min_valid
-        L_min_valid = bisect(lambda L: is_valid_rgb(L) - 0.5, L_min, L_initial)
-    
-    # Find L_max
-    if is_valid_rgb(L_max_possible):
-        L_max_valid = L_max_possible
-    else:
-        # Use bisection to find L_max_valid
-        L_max_valid = bisect(lambda L: is_valid_rgb(L) - 0.5, L_initial, L_max_possible)
-    
-    return L_min_valid, L_max_valid
-
-
 def find_valid_L_range(a_star: float, b_star: float) -> Tuple[float, float]:
     # Vectorized L* samples
     L_samples = np.linspace(0, 100, 100)
@@ -344,76 +298,6 @@ def find_valid_L_range_coarse_optim(a_star: float, b_star: float) -> Tuple[float
         L_max_valid = None
     
     return L_min_valid, L_max_valid
-
-
-def optimize_parameters(L_intended: np.ndarray, L_min: float, L_max: float, lightness_profile: str | None = None):
-    n = len(L_intended)
-    optimize_c = lightness_profile != "flat"
-
-    if optimize_c:
-        # Objective function: minimize -m (maximize m)
-        c_obj = [-1, 0]  # Coefficients for variables [m, c]
-
-        # Inequality constraints: A_ub * x <= b_ub
-        A_ub = np.zeros((2 * n, 2))  # Two variables: m and c
-        b_ub = np.zeros(2 * n)
-
-        for i in range(n):
-            # Constraint: -L_intended_i * m - c <= -L_min_i
-            A_ub[2 * i] = [-L_intended[i], -1]
-            b_ub[2 * i] = -L_min[i]
-
-            # Constraint: L_intended_i * m + c <= L_max_i
-            A_ub[2 * i + 1] = [L_intended[i], 1]
-            b_ub[2 * i + 1] = L_max[i]
-
-        # Variable bounds
-        bounds = [
-            (0, None),      # m >= 0
-            (-100, 100)  # c between -100 and 100
-        ]
-    else:
-        # Objective function: minimize -m (maximize m)
-        c_obj = [-1]  # Coefficient for variable m
-
-        # Inequality constraints: A_ub * x <= b_ub
-        A_ub = np.zeros((2 * n, 1))  # One variable: m
-        b_ub = np.zeros(2 * n)
-
-        for i in range(n):
-            # Constraint: -L_intended_i * m <= -L_min_i
-            A_ub[2 * i] = [-L_intended[i]]
-            b_ub[2 * i] = -L_min[i]
-
-            # Constraint: L_intended_i * m <= L_max_i
-            A_ub[2 * i + 1] = [L_intended[i]]
-            b_ub[2 * i + 1] = L_max[i]
-
-        # Variable bounds
-        bounds = [
-            (0, None)  # m >= 0
-        ]
-
-        c_opt = 0  # c is fixed to zero
-
-    # Solve the linear programming problem
-    res = linprog(
-        c=c_obj,
-        A_ub=A_ub,
-        b_ub=b_ub,
-        bounds=bounds,
-        method='highs'
-    )
-
-    if res.success:
-        m_opt = res.x[0]
-        if optimize_c:
-            c_opt = res.x[1]
-        print(f"Optimal m: {m_opt}, Optimal c: {c_opt}")
-        L_adjusted = m_opt * L_intended + c_opt
-        return L_adjusted, m_opt, c_opt
-    else:
-        raise ValueError("Optimization infeasible for the chosen lightness profile")
 
 
 def rgb_renormalized_lightness(
