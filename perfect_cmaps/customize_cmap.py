@@ -7,7 +7,11 @@ from pathlib import Path
 import json
 import argparse
 from scipy.ndimage import gaussian_filter1d
-from color_utils import (
+
+import os, sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from perfect_cmaps.color_utils import (
     get_lightness_profile, 
     plot_colormap, 
     rgb_renormalized_lightness, 
@@ -212,7 +216,7 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
     elif len(cmap_name.strip()) == 0:
         cmap_name = "custom_cmap"
 
-    file_path = Path(__file__).parent / "lab_control_points" / cmap_name
+    file_path = Path(__file__).parent.parent / "lab_control_points" / cmap_name
     parent_dir = file_path.parent
     new_file_name = file_path.stem
 

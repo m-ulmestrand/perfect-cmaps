@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Tuple, Union
 import json
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
-from optimization import genetic_algorithm
+from perfect_cmaps.optimization import genetic_algorithm
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -23,18 +23,14 @@ SUPPORTED_L_PROFILES = [
 
 
 def load_json(cmap_name: str):
-    file_path = Path(__file__).parent / "lab_control_points" / Path(cmap_name).name
+    file_path = Path(__file__).parent.parent / "lab_control_points" / Path(cmap_name).name
 
     # Adding .with_suffix() so the user can provide without the suffix
     file_path = file_path.with_suffix(".json")
-    try:
-        with open(file_path) as json_file:
-            return json.load(json_file)
+    assert file_path.exists(), f"Colormap {cmap_name} not found in control point files."
+    with open(file_path) as json_file:
+        return json.load(json_file)
     
-    except FileNotFoundError:
-        print(f"Colormap {cmap_name} not found in control point files.")
-        exit(1)
-
 
 def diverging_envelope(x: np.ndarray, c: float = 4, x1: float = 0.25) -> np.ndarray:
     result = np.zeros(x.shape)
@@ -373,7 +369,7 @@ def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
     ax1.set_title("Lightness gradient", fontsize=20)
     ax1.axis("off")
 
-    test_image_path = Path(__file__).parent / "test_images"
+    test_image_path = Path(__file__).parent.parent / "test_images"
     colormap_test_img_path = test_image_path / "colourmaptest.tif"
     colormap_test_image = plt.imread(colormap_test_img_path)
     ax2.imshow(colormap_test_image, cmap=colormap)

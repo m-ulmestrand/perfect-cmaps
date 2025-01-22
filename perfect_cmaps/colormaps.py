@@ -2,9 +2,12 @@ import matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
 from matplotlib import colormaps
 
+import os, sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
 from typing import Tuple, List
-from color_utils import *
+from perfect_cmaps.color_utils import *
 import argparse
 import cv2
 from scipy.ndimage import gaussian_filter1d
@@ -197,7 +200,7 @@ CMAP_DICT = {
 If used as a main script, you can try colormaps out on test images, 
 and inspect the RGB channel profile of the colormap along with lightness and luminance.
 """
-if __name__ == "__main__":
+def main():
     args = parse_args()
     
     if args.mpl_cmap:
@@ -222,6 +225,10 @@ if __name__ == "__main__":
         "PhenomXLGallery_5.jpg",
     ]
     
-    test_image_path = Path(__file__).parent / "test_images"
+    test_image_path = Path(__file__).parent.parent / "test_images"
     test_images = [test_image_path / "sem" / img_name for img_name in test_images]
     plot_images_with_colormap(test_images, cmap)
+
+
+if __name__ == "__main__":
+    main()
