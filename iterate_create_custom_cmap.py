@@ -6,7 +6,7 @@ from numba import njit
 from pathlib import Path
 import json
 import argparse
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter1d
 from color_utils import (
     get_lightness_profile, 
     plot_colormap, 
@@ -132,7 +132,7 @@ def parse_args():
         "--lightness", 
         "-l", 
         type=str, 
-        default=None, 
+        default="linear", 
         help="The lightness profile of the colormap. Allowed values are: " + 
              "linear, diverging, diverging_inverted, flat."
     )
@@ -191,7 +191,7 @@ points_dict = {
 
 num_points = 1000
 lab_points = interpolate_lab(clicked_points_array, num_values=num_points, profile=args.lightness)
-lab_points[:, 1:] = gaussian_filter(lab_points[:, 1:], sigma=num_points * 0.03, axes=0)
+lab_points[:, 1:] = gaussian_filter1d(lab_points[:, 1:], sigma=num_points * 0.03, axis=0)
 rgb_points = rgb_renormalized_lightness(lab_points)
 
 cdict = dict()

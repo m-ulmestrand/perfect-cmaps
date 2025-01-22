@@ -12,50 +12,6 @@ from color_utils import (
 )
 
 
-root_dir = Path(__file__).parent
-extent = [-100, 100, -100, 100]
-
-# Plot the results
-fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-
-# Plot the Max L* Intensity image
-ax1 = axs[0, 0]
-max_L_array = np.load(root_dir / "data" / "cielab_gamut_max_L.npy")
-im1 = ax1.imshow(max_L_array, extent=extent, origin='lower', cmap='gray', aspect='equal')
-ax1.set_title('Max L* Intensity for (a*, b*) pairs')
-ax1.set_xlabel('a* values')
-ax1.set_ylabel('b* values')
-
-# Plot the Brightest RGB Colors image
-ax2 = axs[0, 1]
-max_L_array_RGB = np.load(root_dir / "data" / "cielab_gamut_max_L_RGB.npy")
-im2 = ax2.imshow(max_L_array_RGB, extent=extent, origin='lower', aspect='equal')
-ax2.set_title('Brightest RGB Colors for (a*, b*) pairs')
-ax2.set_xlabel('a* values')
-ax2.set_ylabel('b* values')
-
-plt.subplots_adjust(left=0.25, right=0.95, top=0.95, bottom=0.05)
-rax = plt.axes([0.02, 0.4, 0.2, 0.15])
-
-# Define the labels for the RadioButtons
-lightness_profiles = ('Linear', 'Diverging', "Diverging_sharper", "Diverging_inverted", "Diverging_inverted_sharper", 'Flat')
-
-# Create the RadioButtons
-radio = RadioButtons(rax, lightness_profiles)
-
-# Prepare axes for the gradient plots (initially empty)
-ax_rgb = axs[1, 1]
-ax_gray = axs[1, 0]
-
-plt.tight_layout()
-
-# Initialize a list to store clicked points and a variable for the line handle
-clicked_points = []
-line_handle = None  # This will store the line object
-ax2.plot(0, 0, 'rx', markersize=5)
-c, m = 0.0, 0.0
-
-
 def update_gradient_plot(rgb_colors, ax_rgb, ax_gray):
     cmap = ListedColormap(rgb_colors)
     greyscale_colors = rgb_to_grayscale_lightness(rgb_colors)
@@ -108,6 +64,50 @@ def onclick(event):
         # Update the gradient plot if enough points
         if len(clicked_points) >= 3:
             update_colormap(event)
+
+            
+root_dir = Path(__file__).parent
+extent = [-100, 100, -100, 100]
+
+# Plot the results
+fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+
+# Plot the Max L* Intensity image
+ax1 = axs[0, 0]
+max_L_array = np.load(root_dir / "data" / "cielab_gamut_max_L.npy")
+im1 = ax1.imshow(max_L_array, extent=extent, origin='lower', cmap='gray', aspect='equal')
+ax1.set_title('Max L* Intensity for (a*, b*) pairs')
+ax1.set_xlabel('a* values')
+ax1.set_ylabel('b* values')
+
+# Plot the Brightest RGB Colors image
+ax2 = axs[0, 1]
+max_L_array_RGB = np.load(root_dir / "data" / "cielab_gamut_max_L_RGB.npy")
+im2 = ax2.imshow(max_L_array_RGB, extent=extent, origin='lower', aspect='equal')
+ax2.set_title('Brightest RGB Colors for (a*, b*) pairs')
+ax2.set_xlabel('a* values')
+ax2.set_ylabel('b* values')
+
+plt.subplots_adjust(left=0.25, right=0.95, top=0.95, bottom=0.05)
+rax = plt.axes([0.02, 0.4, 0.2, 0.15])
+
+# Define the labels for the RadioButtons
+lightness_profiles = ('Linear', 'Diverging', "Diverging_sharper", "Diverging_inverted", "Diverging_inverted_sharper", 'Flat')
+
+# Create the RadioButtons
+radio = RadioButtons(rax, lightness_profiles)
+
+# Prepare axes for the gradient plots (initially empty)
+ax_rgb = axs[1, 1]
+ax_gray = axs[1, 0]
+
+plt.tight_layout()
+
+# Initialize a list to store clicked points and a variable for the line handle
+clicked_points = []
+line_handle = None  # This will store the line object
+ax2.plot(0, 0, 'rx', markersize=5)
+c, m = 0.0, 0.0
 
 radio.on_clicked(update_colormap)
 cid = fig.canvas.mpl_connect('button_press_event', onclick)

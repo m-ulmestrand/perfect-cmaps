@@ -7,7 +7,7 @@ from typing import Tuple, List
 from color_utils import *
 import argparse
 import cv2
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter1d
 
 
 def get_colormap(
@@ -65,7 +65,7 @@ def get_colormap(
         interpolated_values = interpolate_lab(control_points, n, lightness, interpolation)
         if smoothing is not None and smoothing > 0.0:
             sigma = smoothing * n
-            interpolated_values[:, 1:] = gaussian_filter(interpolated_values[:, 1:], sigma=sigma, axes=0)
+            interpolated_values[:, 1:] = gaussian_filter1d(interpolated_values[:, 1:], sigma=sigma, axis=0)
 
         rgb_values = rgb_renormalized_lightness(interpolated_values, 500, 500)
     
