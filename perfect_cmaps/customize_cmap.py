@@ -17,6 +17,7 @@ from perfect_cmaps.color_utils import (
     rgb_renormalized_lightness, 
     interpolate_lab
 )
+from perfect_cmaps.storage import save_data
 
 
 @njit
@@ -216,23 +217,7 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
     elif len(cmap_name.strip()) == 0:
         cmap_name = "custom_cmap"
 
-    file_path = Path(__file__).parent.parent / "lab_control_points" / cmap_name
-    parent_dir = file_path.parent
-    new_file_name = file_path.stem
-
-    i = 2
-    while True:
-        new_json_file = parent_dir / f"{new_file_name}.json"
-        if new_json_file.exists():
-            new_file_name = f"{file_path.stem}_{i}"
-            i += 1
-        else:
-            break
-
-    with open(new_json_file, "w+") as json_file:
-        json.dump(points_dict, json_file, indent=2)
-
-    print(f"Saved control points to {new_json_file}")
+    save_data(points_dict, cmap_name)
 
 
 if __name__ == "__main__":

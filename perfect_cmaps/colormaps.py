@@ -7,10 +7,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 from typing import Tuple, List
-from perfect_cmaps.color_utils import *
 import argparse
 import cv2
 from scipy.ndimage import gaussian_filter1d
+
+from perfect_cmaps.color_utils import *
+from perfect_cmaps.storage import load_data
 
 
 def get_colormap(
@@ -57,7 +59,7 @@ def get_colormap(
     space = np.linspace(0, 1, n)
 
     if not cmap_name in CMAP_DICT.keys():
-        json_data = load_json(cmap_name)
+        json_data = load_data(cmap_name)
         control_points = np.array(json_data["points"])
 
         if lightness is None:
