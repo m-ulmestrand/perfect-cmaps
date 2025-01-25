@@ -10,9 +10,10 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/m-ulmestrand/perfect-cmaps",
     packages=find_packages(),
+    include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache License, Version 2.0",
+        "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
