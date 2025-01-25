@@ -5,8 +5,9 @@ import json
 import sys
 sys.path.append(Path(__file__).parent.parent.absolute().as_posix())
 
-import importlib.resources as pkg_resources
+import importlib_resources as resources
 from perfect_cmaps import lab_control_points
+from perfect_cmaps import test_images
 
 
 app_name = "perfect_cmaps"
@@ -32,16 +33,16 @@ def save_data(data: dict, name: str):
     print("Saved colormap data as", new_name)
 
 
-def load_data(filename: str):
+def load_data(filename: str) -> dict:
     """
     Load data from the internal package folder first.
     If not found, try the custom app data folder.
     """
+    filename = Path(filename).with_suffix(".json")  # Ensure the file has a .json suffix
 
-    filename = Path(filename).with_suffix(".json")
     # Try loading from the internal package data folder
     try:
-        with pkg_resources.open_text(lab_control_points, filename) as f:
+        with resources.open_text(lab_control_points, filename.name) as f:
             return json.load(f)
     except (FileNotFoundError, ModuleNotFoundError):
         pass  # File not found internally, fallback to the custom app folder
@@ -54,3 +55,11 @@ def load_data(filename: str):
 
     # If not found in either location, raise an exception
     raise FileNotFoundError(f"{filename} not found in internal or app data folders.")
+
+
+def get_test_img_path() -> Path:
+    """
+    Return the path to the 'test_images' folder inside the package.
+    """
+    folder_path = resources.files(test_images)
+    return Path(folder_path)
