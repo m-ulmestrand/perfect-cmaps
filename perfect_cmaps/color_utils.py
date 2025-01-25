@@ -2,7 +2,6 @@ import matplotlib.colors as mcolors
 import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
-from pathlib import Path
 from typing import Tuple, Union
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from matplotlib import pyplot as plt
