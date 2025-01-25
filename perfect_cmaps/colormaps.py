@@ -10,6 +10,7 @@ from typing import Tuple, List
 import argparse
 import cv2
 from scipy.ndimage import gaussian_filter1d
+from pathlib import Path
 
 from perfect_cmaps.color_utils import *
 from perfect_cmaps.storage import load_data, get_test_img_path
