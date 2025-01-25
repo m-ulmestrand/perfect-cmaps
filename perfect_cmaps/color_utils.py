@@ -22,16 +22,6 @@ SUPPORTED_L_PROFILES = [
 ]
 
 
-def load_json(cmap_name: str):
-    file_path = Path(__file__).parent.parent / "lab_control_points" / Path(cmap_name).name
-
-    # Adding .with_suffix() so the user can provide without the suffix
-    file_path = file_path.with_suffix(".json")
-    assert file_path.exists(), f"Colormap {cmap_name} not found in control point files."
-    with open(file_path) as json_file:
-        return json.load(json_file)
-    
-
 def diverging_envelope(x: np.ndarray, c: float = 4, x1: float = 0.25) -> np.ndarray:
     result = np.zeros(x.shape)
     m = x1 * (c - 2) / (1 - 2 * x1 + 1e-5)
