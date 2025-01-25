@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from numba import njit
-from pathlib import Path
-import json
 import argparse
 from scipy.ndimage import gaussian_filter1d
 
