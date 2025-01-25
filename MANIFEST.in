@@ -1,0 +1,6 @@
+recursive-include perfect_cmaps/data *
+recursive-include perfect_cmaps/test_images *
+recursive-include perfect_cmaps/lab_control_points *
+
+exclude assets/*
+exclude __pycache__/*
