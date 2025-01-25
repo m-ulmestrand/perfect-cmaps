@@ -5,9 +5,10 @@ from scipy.interpolate import interp1d
 from pathlib import Path
 from typing import Tuple, Union
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
-from perfect_cmaps.optimization import genetic_algorithm
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+
+from perfect_cmaps.optimization import genetic_algorithm
 from perfect_cmaps.storage import get_test_img_path
 
 
