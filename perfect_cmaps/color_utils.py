@@ -4,11 +4,11 @@ from scipy.stats import beta
 from scipy.interpolate import interp1d
 from pathlib import Path
 from typing import Tuple, Union
-import json
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from perfect_cmaps.optimization import genetic_algorithm
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from perfect_cmaps.storage import get_test_img_path
 
 
 RGB_WEIGHT = np.array([0.2989, 0.5870, 0.1140])
@@ -359,7 +359,7 @@ def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
     ax1.set_title("Lightness gradient", fontsize=20)
     ax1.axis("off")
 
-    test_image_path = Path(__file__).parent.parent / "test_images"
+    test_image_path = get_test_img_path()
     colormap_test_img_path = test_image_path / "colourmaptest.tif"
     colormap_test_image = plt.imread(colormap_test_img_path)
     ax2.imshow(colormap_test_image, cmap=colormap)

@@ -12,7 +12,7 @@ import cv2
 from scipy.ndimage import gaussian_filter1d
 
 from perfect_cmaps.color_utils import *
-from perfect_cmaps.storage import load_data
+from perfect_cmaps.storage import load_data, get_test_img_path
 
 
 def get_colormap(
@@ -227,7 +227,7 @@ def main():
         "PhenomXLGallery_5.jpg",
     ]
     
-    test_image_path = Path(__file__).parent.parent / "test_images"
+    test_image_path = get_test_img_path()
     test_images = [test_image_path / "sem" / img_name for img_name in test_images]
     plot_images_with_colormap(test_images, cmap)
 
