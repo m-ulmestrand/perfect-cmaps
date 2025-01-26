@@ -1,8 +1,13 @@
 # perfect-cmaps
-This repository provides Python functionality for creating custom colormaps which are perfectly perceptually uniform.
+This package provides Python functionality for creating custom colormaps which are perfectly perceptually uniform.
 The project came up as a result of there being too few easily accessible perceptually uniform colormaps, so I wanted to have a go at creating a good library where users can easily create their own. I wasn't quite happy with colormaps such as `viridis`, `plasma` or `magma` from `matplotlib`, so I started making some algorithmic colormaps. 
 
 To stay as true as possible to the lightness achieved by a true grayscale colormap, but add more information with colors, the perceptual range of colormaps is optimized to be as high as possible.
+
+### Main package functionality
+- `create_custom_colormap()`: Create your own colormap.
+- `get_colormap()`: Get a named colormap from the library -- an instance of `matplotlib.colors.LinearSegmentedColormap`.
+- `get_available_colormaps()`: Lists all available local and internal colormaps.
 
 ### Example of creating a custom colormap
 run: `python ./perfect_cmaps/customize_cmap.py --num_points 21 --lightness linear` or a similar command
