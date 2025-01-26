@@ -1,3 +1,8 @@
+[bumpversion]
+current_version = 1.0.4
+commit = true
+tag = true
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -7,3 +12,11 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "perfect_cmaps" = ["data/*", "test_images/*", "lab_control_points/*"]
+
+[bumpversion:file:perfect_cmaps/__init__.py]
+search = __version__ = "{current_version}"
+replace = __version__ = "{new_version}"
+
+[bumpversion:file:CITATION.cff]
+search = version: {current_version}
+replace = version: {new_version}

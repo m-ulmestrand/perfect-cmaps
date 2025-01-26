@@ -1,8 +1,15 @@
 from setuptools import setup, find_packages
+import re
+
+
+# Read the version directly from __init__.py
+with open("perfect_cmaps/__init__.py", "r") as f:
+    version = re.search(r'__version__ = "(.*?)"', f.read()).group(1)
+
 
 setup(
     name="perfect_cmaps",
-    version="1.0.0",
+    version=version,
     author="Mattias Ulmestrand",
     author_email="m.ulmestrand@gmail.com",
     description="Create amazing perceptually uniform colormaps with ease!",
