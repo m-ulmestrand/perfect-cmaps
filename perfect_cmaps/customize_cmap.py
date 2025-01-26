@@ -211,7 +211,7 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
     # Prompt user for colormap name
     cmap_name = input("\nEnter desired colormap name. Quit with 'q'.\nControl points are saved in your local app registry.\nColormap name: ")
     if cmap_name.strip() == 'q':
-        exit()
+        return
     elif len(cmap_name.strip()) == 0:
         cmap_name = "custom_cmap"
 

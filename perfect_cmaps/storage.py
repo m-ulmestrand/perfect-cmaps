@@ -63,3 +63,47 @@ def get_test_img_path() -> Path:
     """
     folder_path = resources.files(test_images)
     return Path(folder_path)
+
+
+def get_available_colormaps(verbose: False):
+    """
+    Print the list of available colormap files from both the internal package folder
+    and the local app data folder.
+    """
+
+    output = "Available data files:\n"
+
+    # List internal data files
+    output += "\nInternal Data Files:\n"
+    cmap_names = []
+
+    try:
+        internal_files = list(resources.contents(lab_control_points))
+        json_internal_files = [file for file in internal_files if file.endswith(".json")]
+        if json_internal_files:
+            for file in json_internal_files:
+                output += f"  - {file}\n"
+                cmap_names.append(file.split(".json")[0])
+        else:
+            output += "  (No JSON files found in the internal data folder.)\n"
+    except Exception as e:
+        output += f"  (Error reading internal data files: {e})\n"
+
+    # List local data files
+    output += "\nLocal Data Files:\n"
+    local_files = list(data_dir.glob("*.json"))
+    if local_files:
+        for file in local_files:
+            output += f"  - {file.name}\n"
+            cmap_names.append(file.stem)
+    else:
+        output += "  (No JSON files found in the local app data folder.)\n"
+
+    if verbose:
+        print(output)
+    
+    return cmap_names
+
+
+if __name__ == "__main__":
+    get_available_colormaps(True)
