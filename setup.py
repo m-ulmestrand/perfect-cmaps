@@ -33,5 +33,6 @@ setup(
         "scipy",
         "opencv-python-headless",
         "importlib_resources",
+        "appdirs",
     ],
 )
