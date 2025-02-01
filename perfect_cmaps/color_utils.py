@@ -122,7 +122,6 @@ def get_lightness_profile(n_values: int, profile: str = "linear") -> np.ndarray:
 
     if profile == "linear":
         L_values = np.linspace(min_L, max_L, n_values)
-        print("L values here", L_values)
     elif profile.startswith("diverging"):
         sqrt_range = math.sqrt(max_L - min_L)
         linspace = np.linspace(-sqrt_range, sqrt_range, n_values)
