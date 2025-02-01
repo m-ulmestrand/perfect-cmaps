@@ -5,7 +5,6 @@ from colour import Lab_to_XYZ, XYZ_to_sRGB
 from numba import njit
 import argparse
 from scipy.ndimage import gaussian_filter1d
-from typing import Literal
 
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
