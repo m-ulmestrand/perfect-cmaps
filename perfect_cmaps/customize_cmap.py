@@ -10,7 +10,7 @@ from typing import Literal
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from color_utils import (
+from perfect_cmaps.color_utils import (
     get_lightness_profile, 
     plot_colormap, 
     rgb_renormalized_lightness, 
@@ -18,7 +18,7 @@ from color_utils import (
     Lab_to_sRGB,
     SUPPORTED_L_PROFILES
 )
-from storage import save_data
+from perfect_cmaps.storage import save_data
 
 
 @njit
