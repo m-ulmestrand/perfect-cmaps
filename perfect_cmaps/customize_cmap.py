@@ -1,37 +1,44 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
+from colour import Lab_to_XYZ, XYZ_to_sRGB
 from numba import njit
 import argparse
 from scipy.ndimage import gaussian_filter1d
+from typing import Literal
 
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from perfect_cmaps.color_utils import (
+from color_utils import (
     get_lightness_profile, 
     plot_colormap, 
     rgb_renormalized_lightness, 
-    interpolate_lab
+    interpolate_lab,
+    Lab_to_sRGB,
+    SUPPORTED_L_PROFILES
 )
-from perfect_cmaps.storage import save_data
+from storage import save_data
 
 
 @njit
-def get_occupancy_matrix(lab_values: np.ndarray, num_bins: int):
-    l_step = 100 / num_bins
-    ab_step = 200 / num_bins
-    occupancy_matrix = np.zeros((num_bins, num_bins, num_bins), dtype=np.bool_)
-
-    for lab in lab_values:
-        l_bin = int(lab[0] / l_step)
-        a_bin = int((lab[1] + 100) / ab_step)
-        b_bin = int((lab[2] + 100) / ab_step)
-        if 0 <= l_bin < num_bins and 0 <= a_bin < num_bins and 0 <= b_bin < num_bins:
-            occupancy_matrix[l_bin, a_bin, b_bin] = True
+def compute_occupancy(RGB_values: np.ndarray, num_bins: int) -> np.ndarray:
+    occupancy_matrix = np.zeros((num_bins, num_bins), dtype=np.uint8)
+    
+    for i in range(num_bins):
+        for j in range(num_bins):
+            index = i * num_bins + j
+            R, G, B = RGB_values[index]
+            if 0 <= R <= 1 and 0 <= G <= 1 and 0 <= B <= 1:  # Check if all RGB values are valid
+                occupancy_matrix[i, j] = 1
     
     return occupancy_matrix
+
+
+def get_ab_occupancy(L_value: float, ab_values: np.ndarray, num_bins: int) -> np.ndarray: 
+    Lab_values = np.append(np.full((ab_values.shape[0], 1), L_value), ab_values, axis=1)
+    RGB_values = Lab_to_sRGB(Lab_values)
+    return compute_occupancy(RGB_values, num_bins).astype(bool)
 
 
 def create_background_image(num_bins: int, num_steps: int = 8):
@@ -96,23 +103,26 @@ def parse_args():
     return arg_parser.parse_args()
 
 
-def create_custom_colormap(num_control_points: int = 20, lightness: str = "linear"):
+def create_custom_colormap(
+        num_control_points: int = 20, 
+        lightness: str = "linear", 
+        num_bins: int = 500
+    ):
+    """Lets the user define control points for a La*b* colormap 
+    by iterating through a*b* slices for fixed L values.
+    The colormap is interpolated in La*b* space between these control points.
+
+    Args:
+        num_control_points (int, optional): Number of control points. Defaults to 20.
+        lightness (str, optional): Lightness profile for the colormap. Defaults to "linear".
+        num_bins (int, optional): Number of bins for visualization of slices. Defaults to 500.
+    """
+
+    assert lightness in SUPPORTED_L_PROFILES, \
+        f"Lightness profile not in supported profiles. Valid choices are {SUPPORTED_L_PROFILES}"
+    
     L_values = get_lightness_profile(num_control_points, lightness)
-
-    # Generate a grid of sRGB values
-    steps = 300
-    r = np.linspace(0, 1, steps)
-    g = np.linspace(0, 1, steps)
-    b = np.linspace(0, 1, steps)
-    R, G, B = np.meshgrid(r, g, b)
-    RGB = np.stack((R.flatten(), G.flatten(), B.flatten()), axis=-1)
-    XYZ = sRGB_to_XYZ(RGB)
-    Lab = XYZ_to_Lab(XYZ)
-
-    # Adjust number of bins for finer detail
-    num_bins = 200
-    occupancy = get_occupancy_matrix(Lab, num_bins)
-    occupancy = occupancy.transpose(0, 2, 1)  # Transpose for visualization
+    num_bins = 500
 
     # Initialize for storing clicked points and tracking current L* level
     clicked_points = []
@@ -126,6 +136,10 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
     ax.set_xlabel("a* values")
     ax.set_ylabel("b* values")
 
+    a_values = np.linspace(-100, 100, num_bins)
+    b_values = np.linspace(-100, 100, num_bins)
+    A, B = np.meshgrid(a_values, b_values, indexing='xy')
+    ab_values = np.column_stack([A.ravel(), B.ravel()])
 
     def plot_next_L_slice():
         if current_L_index >= len(L_values):
@@ -133,12 +147,9 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
             return
         
         L = L_values[current_L_index]
-        l_bin_index = min(int(L / (100 / num_bins)), num_bins - 1)  # Ensure index is within bounds
-        ab_slice = occupancy[l_bin_index]
+        ab_slice = get_ab_occupancy(L, ab_values, num_bins)
         
         # Generate Lab values for this slice
-        a_values = np.linspace(-100, 100, num_bins)
-        b_values = np.linspace(-100, 100, num_bins)
         Lab_slice = np.zeros((num_bins, num_bins, 3))
         Lab_slice[..., 0] = L
         Lab_slice[..., 1] = b_values[None, :]
@@ -163,13 +174,12 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
     def onclick(event):
         nonlocal current_L_index
         if event.inaxes == ax:
-            
+
             x, y = event.xdata, event.ydata
             L = L_values[current_L_index]
             
             # Project click onto gamut if outside
-            l_bin_index = min(int(L / (100 / num_bins)), num_bins - 1)
-            ab_slice = occupancy[l_bin_index]
+            ab_slice = get_ab_occupancy(L, ab_values, num_bins)
             x, y = project_onto_gamut(x, y, ab_slice, num_bins)
             
             clicked_points.append((x, y))

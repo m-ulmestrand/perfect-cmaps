@@ -6,6 +6,7 @@ from typing import Tuple, Union
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+import math
 
 from perfect_cmaps.optimization import genetic_algorithm
 from perfect_cmaps.storage import get_test_img_path
@@ -113,29 +114,38 @@ def copper_salt(x: np.ndarray, ijk: Union[Tuple[int, int, int], None] = None) ->
 
 
 def get_lightness_profile(n_values: int, profile: str = "linear") -> np.ndarray:
+    assert profile in SUPPORTED_L_PROFILES, \
+        f"Lightness profile not in supported profiles. Valid choices are {SUPPORTED_L_PROFILES}"
+    
+    max_L = 99.5
+    min_L = 0.5
+
     if profile == "linear":
-        L_values = np.linspace(0, 100, n_values)
+        L_values = np.linspace(min_L, max_L, n_values)
+        print("L values here", L_values)
     elif profile.startswith("diverging"):
-        base_envelope = np.linspace(-10, 10, n_values)
+        sqrt_range = math.sqrt(max_L - min_L)
+        linspace = np.linspace(-sqrt_range, sqrt_range, n_values)
+        quadratic_profile = linspace ** 2 + min_L
 
         if profile == "diverging":
-            L_values = 100 - base_envelope ** 2
+            L_values = 100 - quadratic_profile
 
         elif profile == "diverging_sharper":
-            L_values = 100 - (base_envelope ** 2 + np.abs(base_envelope * 10)) / 2
+            L_values = 100 - (quadratic_profile + np.abs(linspace) * sqrt_range + min_L) / 2
 
         elif profile == "diverging_inverted":
-            L_values = base_envelope ** 2
+            L_values = quadratic_profile
         
         elif profile == "diverging_inverted_sharper":
-            L_values = (base_envelope ** 2 + np.abs(base_envelope * 10)) / 2
+            L_values = (quadratic_profile + np.abs(linspace) * sqrt_range + min_L) / 2
 
     elif profile == "flat":
         # Use a flat lightness profile, e.g., L = 50
         L_values = np.full(n_values, 50)
     else:
         # Default to linear
-        L_values = np.linspace(0, 100, n_values)
+        L_values = np.linspace(min_L, max_L, n_values)
     
     return L_values
 
