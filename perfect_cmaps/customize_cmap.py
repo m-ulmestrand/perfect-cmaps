@@ -17,6 +17,7 @@ from perfect_cmaps.color_utils import (
     Lab_to_sRGB
 )
 from perfect_cmaps.storage import save_data
+from perfect_cmaps.transform import *
 
 
 @njit
@@ -103,16 +104,17 @@ def parse_args():
 
 def create_custom_colormap(num_control_points: int = 20, lightness: str = "linear"):
     L_values = get_lightness_profile(num_control_points, lightness)
-    num_bins = 300
+    num_bins = 500
 
     # Initialize for storing clicked points and tracking current L* level
     clicked_points = []
     current_L_index = 0
 
     # Setup plot
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(6, 6))
     image = create_background_image(num_bins)
     implot = ax.imshow(image, extent=[-100, 100, -100, 100], origin="lower")
+    implot2 = ax2.imshow(image, extent=[-100, 100, -100, 100], origin="lower")
     ax.set_title("Click to define a control point for each L* level")
     ax.set_xlabel("a* values")
     ax.set_ylabel("b* values")
@@ -131,7 +133,6 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
         ab_slice = get_ab_occupancy(L, ab_values, num_bins)
         
         # Generate Lab values for this slice
-        new_ab_slice = np.zeros_like(ab_slice)
         Lab_slice = np.zeros((num_bins, num_bins, 3))
         Lab_slice[..., 0] = L
         Lab_slice[..., 1] = b_values[None, :]
@@ -141,6 +142,7 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
         XYZ_slice = Lab_to_XYZ(Lab_slice)
         RGB_slice = XYZ_to_sRGB(XYZ_slice)
         RGB_slice = np.clip(RGB_slice, 0, 1)
+        new_RGB_slice, pts = thin_plate_spline_warp(ab_slice, RGB_slice, num_bins)
         
         # Update background with RGB values where occupancy is True
         image = create_background_image(num_bins)
@@ -148,6 +150,11 @@ def create_custom_colormap(num_control_points: int = 20, lightness: str = "linea
         
         # Display the current slice
         implot.set_data(image)
+        implot2.set_data(new_RGB_slice)
+        pts -= 0.5
+        pts *= 200
+        print(pts)
+        ax.scatter(pts[:, 0], pts[:, 1])
         ax.set_title(f"a*b* slice at L* = {L:.1f}")
         plt.draw()
 
