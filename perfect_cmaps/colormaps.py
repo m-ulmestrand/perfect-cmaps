@@ -16,7 +16,7 @@ from perfect_cmaps.color_utils import *
 from perfect_cmaps.storage import load_data, get_test_img_path
 
 
-def get_colormap(
+def get_cmap(
         cmap_name: str, 
         n: int = 100, 
         ijk: Tuple = None, 
@@ -190,15 +190,6 @@ def parse_args():
     return arg_parser.parse_args()
 
 
-CMAP_DICT = {
-    "cold_blooded": cold_blooded,
-    "cold_blooded_l": cold_blooded_l,
-    "ectotherm": cold_blooded,
-    "ectotherm_l": cold_blooded_l,
-    "copper_salt": copper_salt
-}
-
-
 """
 If used as a main script, you can try colormaps out on test images, 
 and inspect the RGB channel profile of the colormap along with lightness and luminance.
@@ -209,7 +200,7 @@ def main():
     if args.mpl_cmap:
         cmap = colormaps[args.colormap]
     else:
-        cmap = get_colormap(
+        cmap = get_cmap(
             args.colormap, 
             args.num_points, 
             ijk=args.ijk,

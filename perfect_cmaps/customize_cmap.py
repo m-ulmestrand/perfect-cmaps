@@ -77,11 +77,11 @@ def project_onto_gamut(x: float, y: float, ab_slice, num_bins: int):
 def parse_args():
     arg_parser = argparse.ArgumentParser(add_help=False)
     arg_parser.add_argument(
-        "--num_control_points", 
+        "--num_points", 
         "-n", 
         type=int, 
         default=20, 
-        help="Number of control points to choose"
+        help="Number of control points to interpolate between."
     )
     arg_parser.add_argument(
         "--lightness", 
@@ -102,8 +102,8 @@ def parse_args():
     return arg_parser.parse_args()
 
 
-def create_custom_colormap(
-        num_control_points: int = 20, 
+def create_cmap(
+        num_points: int = 20, 
         lightness: str = "linear", 
         num_bins: int = 500
     ):
@@ -112,7 +112,7 @@ def create_custom_colormap(
     The colormap is interpolated in La*b* space between these control points.
 
     Args:
-        num_control_points (int, optional): Number of control points. Defaults to 20.
+        num_points (int, optional): Number of control points. Defaults to 20.
         lightness (str, optional): Lightness profile for the colormap. Defaults to "linear".
         num_bins (int, optional): Number of bins for visualization of slices. Defaults to 500.
     """
@@ -120,7 +120,7 @@ def create_custom_colormap(
     assert lightness in SUPPORTED_L_PROFILES, \
         f"Lightness profile not in supported profiles. Valid choices are {SUPPORTED_L_PROFILES}"
     
-    L_values = get_lightness_profile(num_control_points, lightness)
+    L_values = get_lightness_profile(num_points, lightness)
     num_bins = 500
 
     # Initialize for storing clicked points and tracking current L* level
@@ -229,4 +229,4 @@ def create_custom_colormap(
 
 if __name__ == "__main__":
     args = parse_args()
-    create_custom_colormap(args.num_control_points, args.lightness)
+    create_cmap(args.num_points, args.lightness)

@@ -5,9 +5,9 @@ The project came up as a result of there being too few easily accessible percept
 To stay as true as possible to the lightness achieved by a true grayscale colormap, but add more information with colors, the perceptual range of colormaps is optimized to be as high as possible.
 
 ### Main package functionality
-- `create_custom_colormap()`: Create your own colormap.
-- `get_colormap()`: Get a named colormap from the library -- an instance of `matplotlib.colors.LinearSegmentedColormap`.
-- `get_available_colormaps()`: Lists all available local and internal colormaps.
+- `create_cmap()`: Create your own colormap.
+- `get_cmap()`: Get a named colormap from the library -- an instance of `matplotlib.colors.LinearSegmentedColormap`.
+- `get_cmaps()`: Lists all available local and internal colormaps.
 
 ### Example of creating a custom colormap
 run: `python ./perfect_cmaps/customize_cmap.py --num_points 21 --lightness linear` or a similar command
@@ -17,7 +17,7 @@ This specifies that your colormap will have 21 control points, which will later 
 https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
 
 ### Generated colormap
-To test out your colormap, you can use the function `get_colormap()` or use the main function from `colormaps.py`:
+To test out your colormap, you can use the function `get_cmap()` or use the main function from `colormaps.py`:
 
 `python ./perfect_cmaps/colormaps.py --colormap test_colormap -n 1000 --interpolation quadratic --smoothing 0.03`
 

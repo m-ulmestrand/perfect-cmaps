@@ -384,3 +384,12 @@ def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
     ax3.set_title("Color channel intensities", fontsize=20)
     ax3.legend(loc=0, fontsize=20)
     plt.show()
+
+
+CMAP_DICT = {
+    "cold_blooded": cold_blooded,
+    "cold_blooded_l": cold_blooded_l,
+    "ectotherm": cold_blooded,
+    "ectotherm_l": cold_blooded_l,
+    "copper_salt": copper_salt
+}

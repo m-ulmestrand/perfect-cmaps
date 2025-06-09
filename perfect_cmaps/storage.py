@@ -1,6 +1,7 @@
 from pathlib import Path
 from appdirs import user_data_dir
 import json
+from typing import List
 
 import sys
 sys.path.append(Path(__file__).parent.parent.absolute().as_posix())
@@ -65,17 +66,18 @@ def get_test_img_path() -> Path:
     return Path(folder_path)
 
 
-def get_available_colormaps(verbose: False):
+def list_cmaps(print_console: bool = False) -> List[str]:
     """
     Print the list of available colormap files from both the internal package folder
     and the local app data folder.
     """
 
-    output = "Available data files:\n"
+    output = "----- Available colormaps -----\n"
 
     # List internal data files
-    output += "\nInternal Data Files:\n"
-    cmap_names = []
+    output += "\nAlgorithmic colormaps:\n  - ectotherm / cold_blooded\n  - ectotherm_l / cold_blooded_l\n"
+    output += "\nInternal colormaps:\n"
+    cmap_names = ["ectotherm", "ectotherm_l"]
 
     try:
         internal_files = list(resources.contents(lab_control_points))
@@ -90,7 +92,7 @@ def get_available_colormaps(verbose: False):
         output += f"  (Error reading internal data files: {e})\n"
 
     # List local data files
-    output += "\nLocal Data Files:\n"
+    output += "\nLocal colormaps:\n"
     local_files = list(data_dir.glob("*.json"))
     if local_files:
         for file in local_files:
@@ -99,11 +101,11 @@ def get_available_colormaps(verbose: False):
     else:
         output += "  (No JSON files found in the local app data folder.)\n"
 
-    if verbose:
+    if print_console:
         print(output)
     
     return cmap_names
 
 
 if __name__ == "__main__":
-    get_available_colormaps(True)
+    list_cmaps(True)
