@@ -4,4 +4,4 @@ from .storage import list_cmaps
 
 
 __all__ = ["get_cmap", "create_cmap", "list_cmaps"]
-__version__ = "1.2.2"
+__version__ = "1.3.0"
