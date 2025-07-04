@@ -34,5 +34,6 @@ setup(
         "opencv-python-headless",
         "importlib_resources",
         "appdirs",
+        "tqdm"
     ],
 )

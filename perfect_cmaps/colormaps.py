@@ -6,11 +6,12 @@ import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import argparse
 import cv2
 from scipy.ndimage import gaussian_filter1d
 from pathlib import Path
+from tqdm import tqdm
 
 from perfect_cmaps.color_utils import *
 from perfect_cmaps.storage import load_data, get_test_img_path
@@ -25,7 +26,7 @@ def get_cmap(
         smoothing: float = None
     ) -> mcolors.LinearSegmentedColormap:
     
-    """Function for getting custom colormaps. 
+    """Get a custom colormap as a matplotlib LinearSegmentedColormap. 
     Two algorithmically generated colormaps are currently available:
         - 'cold_blooded' a.k.a 'ectotherm'
         - 'copper_salt'
@@ -98,6 +99,53 @@ def get_cmap(
         cdict[col] = col_list
     cmp = mcolors.LinearSegmentedColormap(cmap_name, segmentdata=cdict, N=n)
     return cmp
+
+
+def compare_cmaps(
+        names: List[str], 
+        num_points: int = 100, 
+        figsize: Tuple[float, float] = (8, 8),
+        interpolation: str = "quadratic",
+        show_plot: bool = True,
+        smoothing: Optional[float] = None,
+        save_path: Optional[str] = None
+    ):
+    """Show a comparison of colormaps, given their names. Can be used with list_cmaps(), for example.
+
+    Args:
+        names (List[str]): Names of colormaps.
+        num_points (int, optional): Number of points to display in gradients. Defaults to 100.
+        figsize (Tuple[float, float], optional): Size of the comparison plot. Defaults to (8, 8).
+        interpolation (str, optional): Interpolation method for L values. Defaults to 'quadratic'.
+        show_plot (bool, optional): Whether to show the comparison in a window. Defaults to True.
+        smoothing (float, optional): Gaussian smoothing of colormap in Lab space, 
+            applied after interpolation. Defaults to None.
+        save_path (Optional[str], optional): Optional save path for the plot. Defaults to None.
+    """
+    assert show_plot or save_path is not None, "Must either display plot with argument 'show_plot' " \
+        "or save figure with argument 'save_path'."
+    
+    gradient = np.linspace(0, 1, num_points)
+    gradient = np.vstack((gradient, gradient))
+
+    fig, axes = plt.subplots(nrows=len(names), figsize=figsize)
+    if len(names) == 1:
+        axes = [axes]  # Make iterable if only one axis
+
+    for ax, name in tqdm(zip(axes, names), "Creating colormaps", total=len(names)):
+        cmap = get_cmap(name, num_points, interpolation=interpolation, smoothing=smoothing)
+        ax: plt.Axes
+        ax.imshow(gradient, aspect="auto", cmap=cmap)
+        ax.set_axis_off()
+        ax.set_title(name, loc='left', fontsize=10, pad=4)
+
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
+    if show_plot:
+        plt.show()
 
 
 def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
