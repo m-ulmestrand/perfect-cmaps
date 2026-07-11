@@ -1,22 +1,39 @@
-[bumpversion]
-current_version = 1.4.0
-commit = true
-tag = true
-
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "wheel", "cython", "numpy"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "perfect_cmaps"
+version = "1.4.0"
+description = "Create amazing perceptually uniform colormaps with ease!"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.6"
+authors = [
+    {name = "Mattias Ulmestrand", email = "m.ulmestrand@gmail.com"}
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "colour-science",
+    "scipy",
+    "opencv-python-headless",
+    "importlib_resources",
+    "appdirs",
+    "tqdm",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/m-ulmestrand/perfect-cmaps"
 
 [tool.setuptools]
 include-package-data = true
+packages = ["perfect_cmaps", "perfect_cmaps.lab_control_points", "perfect_cmaps.test_images"]
 
 [tool.setuptools.package-data]
 "perfect_cmaps" = ["data/*", "test_images/*", "lab_control_points/*"]
-
-[bumpversion:file:perfect_cmaps/__init__.py]
-search = __version__ = "{current_version}"
-replace = __version__ = "{new_version}"
-
-[bumpversion:file:CITATION.cff]
-search = version: {current_version}
-replace = version: {new_version}
