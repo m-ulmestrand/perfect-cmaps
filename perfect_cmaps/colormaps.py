@@ -90,7 +90,7 @@ def get_cmap(
         if reoptimize_map:
             lab_values = XYZ_to_Lab(sRGB_to_XYZ(rgb_values[:, :3]))
             lab_values[:, 0] = get_lightness_profile(n, lightness)
-            rgb_values, _, _ = rgb_renormalized_lightness(lab_values, 200, 500)
+            rgb_values = rgb_renormalized_lightness(lab_values, 200, 500)
     
     cdict = dict()
 
