@@ -15,6 +15,26 @@ from tqdm import tqdm
 
 from perfect_cmaps.color_utils import *
 from perfect_cmaps.storage import load_data, get_test_img_path
+from perfect_cmaps.lightness_fit import get_fit, build_lab
+
+
+# Tolerance for out-of-gamut values when applying a cached lightness fit
+# (computed on a reference grid) at a different resolution.
+GAMUT_TOLERANCE = 1e-3
+
+
+def _apply_fit(lab_values: np.ndarray, fit: dict) -> np.ndarray:
+    """Apply a cached lightness fit, falling back to a fresh optimization
+    if the result is noticeably out of gamut at this resolution."""
+    if fit["fitness"] == 0.0:
+        print("Optimization failed for chosen lightness profile.")
+        print("Colormap is not perfectly perceptually uniform.")
+        return np.clip(Lab_to_sRGB(lab_values), 0.0, 1.0)
+
+    rgb_values = apply_lightness_genes(lab_values, fit["scale"], fit["offset"])
+    if np.any(rgb_values < -GAMUT_TOLERANCE) or np.any(rgb_values > 1.0 + GAMUT_TOLERANCE):
+        return np.clip(rgb_renormalized_lightness(lab_values), 0.0, 1.0)
+    return np.clip(rgb_values, 0.0, 1.0)
 
 
 def get_cmap(
@@ -61,21 +81,17 @@ def get_cmap(
     space = np.linspace(0, 1, n)
 
     if not cmap_name in CMAP_DICT.keys():
-        json_data = load_data(cmap_name)
-        control_points = np.array(json_data["points"])
-
-        if lightness is None:
-            lightness = json_data["lightness"]
-        else:
+        if lightness is not None:
             assert lightness in SUPPORTED_L_PROFILES, f"Lightness profile {lightness} not supported"
 
-        interpolated_values = interpolate_lab(control_points, n, lightness, interpolation)
-        if smoothing is not None and smoothing > 0.0:
-            sigma = smoothing * n
-            interpolated_values[:, 1:] = gaussian_filter1d(interpolated_values[:, 1:], sigma=sigma, axis=0)
+        json_data, fit = get_fit(cmap_name, lightness, interpolation, smoothing)
+        if lightness is None:
+            lightness = json_data["lightness"]
 
-        rgb_values = rgb_renormalized_lightness(interpolated_values, 500, 500)
-    
+        control_points = np.array(json_data["points"])
+        lab_values = build_lab(control_points, n, lightness, interpolation, smoothing)
+        rgb_values = _apply_fit(lab_values, fit)
+
     else:
         color_function = CMAP_DICT[cmap_name]
         rgb_values = color_function(space, ijk)
@@ -90,7 +106,7 @@ def get_cmap(
         if reoptimize_map:
             lab_values = XYZ_to_Lab(sRGB_to_XYZ(rgb_values[:, :3]))
             lab_values[:, 0] = get_lightness_profile(n, lightness)
-            rgb_values = rgb_renormalized_lightness(lab_values, 200, 500)
+            rgb_values = rgb_renormalized_lightness(lab_values)
     
     cdict = dict()
 

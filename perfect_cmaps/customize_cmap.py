@@ -18,6 +18,7 @@ from perfect_cmaps.color_utils import (
     SUPPORTED_L_PROFILES
 )
 from perfect_cmaps.storage import save_data
+from perfect_cmaps.lightness_fit import DEFAULT_INTERPOLATION, ensure_fit
 
 
 @njit
@@ -224,6 +225,8 @@ def create_cmap(
     elif len(cmap_name.strip()) == 0:
         cmap_name = "custom_cmap"
 
+    # Precompute the default lightness fit so that get_cmap doesn't need to optimize
+    ensure_fit(points_dict, lightness, DEFAULT_INTERPOLATION, None)
     save_data(points_dict, cmap_name)
 
 

@@ -2,13 +2,13 @@ import matplotlib.colors as mcolors
 import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
+from scipy.optimize import linprog
 from typing import Tuple, Union
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import math
 
-from perfect_cmaps.optimization import genetic_algorithm
 from perfect_cmaps.storage import get_test_img_path
 
 
@@ -295,45 +295,84 @@ def find_valid_L_range_coarse_optim(a_star: float, b_star: float) -> Tuple[float
     return L_min_valid, L_max_valid
 
 
-def rgb_renormalized_lightness(
-    lab_colors: np.ndarray, 
-    population_size: int = 100, 
-    num_generations: int = 200,
-    verbose: bool = False,
-) -> np.ndarray:
-    
-    # Compute L_min and L_max for each color
+# Margin (in L* units) kept from the gamut boundaries found by find_valid_L_range
+LIGHTNESS_MARGIN = 1e-6
+
+
+def optimize_lightness_genes(lab_colors: np.ndarray) -> Tuple[float, float, float]:
+    """Find the affine transform (scale, offset) of the intended lightness profile
+    in ``lab_colors[:, 0]`` that maximizes the lightness range while keeping all
+    colors inside the sRGB gamut.
+
+    This is the linear program
+        maximize scale
+        subject to L_min[i] <= scale * L[i] + offset <= L_max[i] for all i,
+    which is solved exactly.
+
+    The genes only depend on the shape of the colormap over the normalized
+    interval [0, 1], not on the number of samples, so they can be cached and
+    reused for any resolution.
+
+    Returns:
+        Tuple[float, float, float]: (scale, offset, fitness), where fitness equals
+        the scale. A fitness of 0.0 means that no feasible transform was found.
+    """
     n_colors = lab_colors.shape[0]
     L_min = np.zeros(n_colors)
     L_max = L_min.copy()
 
     for i in range(n_colors):
-        a_star = lab_colors[i, 1]
-        b_star = lab_colors[i, 2]
-        # Compute L_min[i] and L_max[i] for this (a*, b*) pair
-        L_min[i], L_max[i] = find_valid_L_range(a_star, b_star)
+        L_min[i], L_max[i] = find_valid_L_range(lab_colors[i, 1], lab_colors[i, 2])
 
-    L_intended = lab_colors[:, 0]
+    if np.any(np.isnan(L_min)) or np.any(np.isnan(L_max)):
+        # Some (a*, b*) pair has no in-gamut lightness at all
+        return 1.0, 0.0, 0.0
 
-    # Optimize m and c
-    gene_limits = np.array([[0.0, 100.0], [-100.0, 100.0]])
-    genes, best_fitness = genetic_algorithm(population_size, num_generations, gene_limits, L_intended, L_min, L_max)
+    L_intended = lab_colors[:, 0].astype(np.float64)
+    ones = np.ones(n_colors)
+
+    # Variables x = (scale, offset); linprog minimizes, so negate the scale
+    A_ub = np.vstack([
+        np.column_stack((-L_intended, -ones)),  # scale * L + offset >= L_min
+        np.column_stack((L_intended, ones)),    # scale * L + offset <= L_max
+    ])
+    b_ub = np.concatenate((-(L_min + LIGHTNESS_MARGIN), L_max - LIGHTNESS_MARGIN))
+
+    result = linprog(
+        c=[-1.0, 0.0],
+        A_ub=A_ub,
+        b_ub=b_ub,
+        bounds=[(0.0, 100.0), (-100.0, 100.0)],
+        method="highs",
+    )
+
+    if not result.success:
+        return 1.0, 0.0, 0.0
+
+    scale, offset = result.x
+    return float(scale), float(offset), float(scale)
+
+
+def apply_lightness_genes(lab_colors: np.ndarray, scale: float, offset: float) -> np.ndarray:
+    """Apply an affine lightness transform to Lab colors and convert to sRGB.
+    Does not modify ``lab_colors``."""
+    lab_adjusted = lab_colors.copy()
+    lab_adjusted[:, 0] = lab_colors[:, 0] * scale + offset
+    return Lab_to_sRGB(lab_adjusted)
+
+
+def rgb_renormalized_lightness(lab_colors: np.ndarray, verbose: bool = False) -> np.ndarray:
+    scale, offset, best_fitness = optimize_lightness_genes(lab_colors)
 
     if best_fitness == 0.0:
         print("Optimization failed for chosen lightness profile.")
         print("Colormap is not perfectly perceptually uniform.")
-        return Lab_to_sRGB(lab_colors), 1.0, 0.0
+        return Lab_to_sRGB(lab_colors)
     
     if verbose:
         print(f"Optimized colormap lightness range: {100 * best_fitness:.2f} %")
 
-    L_adjusted = L_intended * genes[0] + genes[1]
-
-    # Update L* values in lab_colors
-    lab_colors[:, 0] = L_adjusted
-
-    # Convert adjusted Lab colors to RGB
-    return Lab_to_sRGB(lab_colors)
+    return apply_lightness_genes(lab_colors, scale, offset)
 
 
 def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
