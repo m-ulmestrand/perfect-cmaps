@@ -1,5 +1,4 @@
 numpy
-cython
 pandas
 matplotlib
 colour-science
