@@ -209,41 +209,41 @@
     "points_hash": "7f7321ce8be3e6803a5a1d5dbbd31f2965711240",
     "fits": {
         "linear|quadratic|0": {
-            "scale": 0.9896949088868483,
-            "offset": 0.5152545556575859,
-            "fitness": 0.9896949088868483,
+            "l_dark": 0.3074262202407138,
+            "l_light": 99.76306039458093,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging|quadratic|0": {
-            "scale": 0.704010447426793,
-            "offset": 1.668197796488624,
-            "fitness": 0.704010447426793,
+            "l_dark": 1.4817157552920772,
+            "l_light": 72.11720375274747,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted|quadratic|0": {
-            "scale": 0.6472830972753438,
-            "offset": 34.58522981100228,
-            "fitness": 0.6472830972753438,
+            "l_dark": 33.707761448868396,
+            "l_light": 99.60405084580455,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_sharper|quadratic|0": {
-            "scale": 0.7043543704592438,
-            "offset": 1.6680258349723986,
-            "fitness": 0.7043543704592438,
+            "l_dark": 1.4817157552920772,
+            "l_light": 72.50782757058195,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted_sharper|quadratic|0": {
-            "scale": 0.7522759791695478,
-            "offset": 24.138438062528987,
-            "fitness": 0.7522759791695478,
+            "l_dark": 22.922825520104034,
+            "l_light": 99.60405084580455,
+            "feasible": true,
             "n_ref": 1024
         },
         "flat|quadratic|0": {
-            "scale": 3.4343434143434344,
-            "offset": -100.0,
-            "fitness": 3.4343434143434344,
+            "l_dark": 58.36183883130947,
+            "l_light": 58.36183883130947,
+            "feasible": true,
             "n_ref": 1024
         }
     },
-    "version": 2
+    "version": 3
 }

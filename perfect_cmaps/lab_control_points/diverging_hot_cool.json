@@ -89,41 +89,41 @@
     "points_hash": "d3ccb5d16c89c900ef05889f601f6c9e711f0e93",
     "fits": {
         "linear|quadratic|0": {
-            "scale": 1.0,
-            "offset": 0.0,
-            "fitness": 0.0,
+            "l_dark": 0.5,
+            "l_light": 99.5,
+            "feasible": false,
             "n_ref": 1024
         },
         "diverging|quadratic|0": {
-            "scale": 0.8506751390460788,
-            "offset": 0.5847644405779706,
-            "fitness": 0.8506751390460788,
+            "l_dark": 0.5582033889712785,
+            "l_light": 86.5483999924844,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted|quadratic|0": {
-            "scale": 1.0,
-            "offset": 0.0,
-            "fitness": 0.0,
+            "l_dark": 0.5,
+            "l_light": 99.5,
+            "feasible": false,
             "n_ref": 1024
         },
         "diverging_sharper|quadratic|0": {
-            "scale": 0.9901793405866679,
-            "offset": 0.5150123398076761,
-            "fitness": 0.9901793405866679,
+            "l_dark": 0.5582033889712785,
+            "l_light": 99.64977828925292,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted_sharper|quadratic|0": {
-            "scale": 1.0,
-            "offset": 0.0,
-            "fitness": 0.0,
+            "l_dark": 0.5,
+            "l_light": 99.5,
+            "feasible": false,
             "n_ref": 1024
         },
         "flat|quadratic|0": {
-            "scale": 1.0,
-            "offset": 0.0,
-            "fitness": 0.0,
+            "l_dark": 50.0,
+            "l_light": 50.0,
+            "feasible": false,
             "n_ref": 1024
         }
     },
-    "version": 2
+    "version": 3
 }

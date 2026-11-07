@@ -1,10 +1,15 @@
 """Caching of optimized lightness fits for Lab control-point colormaps.
 
-The lightness optimization finds an affine transform ``L = scale * L_profile(t) + offset``
-of the intended lightness profile. Both the profile and the interpolated a*/b* curves
-are functions of the normalized position t in [0, 1], so the fit is independent of the
-number of samples. It is computed once on a dense reference grid and stored in the
-colormap's JSON data under ``"fits"``, keyed by lightness profile, interpolation and smoothing.
+The lightness optimization finds the lightness of the darkest and lightest point of a
+colormap, ``(l_dark, l_light)``, such that ``L(t) = l_dark + (l_light - l_dark) * p(t)``
+stays in the sRGB gamut, where p is the normalized lightness profile. Both the profile and
+the interpolated a*/b* curves are functions of the normalized position t in [0, 1], so the
+fit is independent of the number of samples. It is computed once on a dense reference grid.
+
+Fits with default (unconstrained) lightness bounds are stored in the colormap's JSON data
+under ``"fits"``, keyed by lightness profile, interpolation and smoothing. Fits with
+user-given bounds are only memoized in-process. The gamut envelope, which is the expensive
+part of a fit and does not depend on the lightness profile or the bounds, is memoized too.
 """
 import hashlib
 import json
@@ -14,8 +19,14 @@ import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
 from perfect_cmaps.color_utils import (
+    DEFAULT_BOUNDS_MODE,
+    LightnessBounds,
+    LightnessFit,
     interpolate_lab,
-    optimize_lightness_genes,
+    lightness_envelope,
+    normalize_lightness_bounds,
+    normalized_lightness_profile,
+    solve_lightness,
 )
 from perfect_cmaps.storage import (
     SOURCE_PACKAGE,
@@ -25,18 +36,23 @@ from perfect_cmaps.storage import (
 )
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 N_REF = 1024
 
 DEFAULT_INTERPOLATION = "quadratic"
 
-# In-process memo: (cmap name, points hash, fit key) -> fit dict
-_memo: Dict[Tuple[str, str, str], dict] = {}
+# In-process memos
+_memo: Dict[tuple, LightnessFit] = {}
+_envelope_memo: Dict[tuple, Tuple[np.ndarray, np.ndarray]] = {}
+
+
+def _smoothing_key(smoothing: Optional[float]) -> str:
+    smoothing = round(float(smoothing), 4) if smoothing else 0
+    return f"{smoothing:g}"
 
 
 def fit_key(lightness: str, interpolation: str, smoothing: Optional[float]) -> str:
-    smoothing = round(float(smoothing), 4) if smoothing else 0
-    return f"{lightness}|{interpolation}|{smoothing:g}"
+    return f"{lightness}|{interpolation}|{_smoothing_key(smoothing)}"
 
 
 def points_hash(points) -> str:
@@ -58,16 +74,32 @@ def build_lab(
     return lab
 
 
+def get_envelope(
+    control_points: np.ndarray,
+    interpolation: str,
+    smoothing: Optional[float],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Gamut envelope (L_min, L_max) of the colormap on the reference grid, memoized."""
+    key = (points_hash(control_points), interpolation, _smoothing_key(smoothing))
+    if key not in _envelope_memo:
+        # The lightness profile doesn't affect a* and b*, so any profile will do here
+        lab = build_lab(control_points, N_REF, "linear", interpolation, smoothing)
+        _envelope_memo[key] = lightness_envelope(lab)
+    return _envelope_memo[key]
+
+
 def compute_fit(
     control_points: np.ndarray,
     lightness: str,
     interpolation: str,
     smoothing: Optional[float],
-    n: int = N_REF,
-) -> dict:
-    lab = build_lab(control_points, n, lightness, interpolation, smoothing)
-    scale, offset, fitness = optimize_lightness_genes(lab)
-    return {"scale": scale, "offset": offset, "fitness": fitness, "n_ref": n}
+    l_dark: LightnessBounds = None,
+    l_light: LightnessBounds = None,
+    bounds: str = DEFAULT_BOUNDS_MODE,
+) -> LightnessFit:
+    L_min, L_max = get_envelope(control_points, interpolation, smoothing)
+    p_hat = normalized_lightness_profile(N_REF, lightness)
+    return solve_lightness(p_hat, L_min, L_max, lightness == "flat", l_dark, l_light, bounds)
 
 
 def upgrade_schema(json_data: dict) -> bool:
@@ -83,7 +115,9 @@ def upgrade_schema(json_data: dict) -> bool:
         json_data["fits"] = {}
         changed = True
     if json_data.get("version") != SCHEMA_VERSION:
+        # Fits from older schema versions use a different parametrization
         json_data["version"] = SCHEMA_VERSION
+        json_data["fits"] = {}
         changed = True
     return changed
 
@@ -94,17 +128,19 @@ def ensure_fit(
     interpolation: str,
     smoothing: Optional[float],
 ) -> Tuple[dict, bool]:
-    """Return the cached fit for the given parameters, computing it if missing.
+    """Return the stored fit (with default lightness bounds) for the given parameters,
+    computing it if missing.
     Returns (fit, changed), where ``changed`` signals that ``json_data`` was modified."""
     changed = upgrade_schema(json_data)
     key = fit_key(lightness, interpolation, smoothing)
-    fit = json_data["fits"].get(key)
-    if fit is None:
-        control_points = np.asarray(json_data["points"], dtype=np.float64)
-        fit = compute_fit(control_points, lightness, interpolation, smoothing)
-        json_data["fits"][key] = fit
-        changed = True
-    return fit, changed
+    stored = json_data["fits"].get(key)
+    if stored is not None:
+        return LightnessFit.from_dict(stored), changed
+
+    control_points = np.asarray(json_data["points"], dtype=np.float64)
+    fit = compute_fit(control_points, lightness, interpolation, smoothing)
+    json_data["fits"][key] = {**fit.to_dict(), "n_ref": N_REF}
+    return fit, True
 
 
 def get_fit(
@@ -112,12 +148,15 @@ def get_fit(
     lightness: Optional[str],
     interpolation: str,
     smoothing: Optional[float],
-) -> Tuple[dict, dict]:
-    """Load a colormap's data and its lightness fit, optimizing and persisting
-    the fit on a cache miss.
+    l_dark: LightnessBounds = None,
+    l_light: LightnessBounds = None,
+    bounds: str = DEFAULT_BOUNDS_MODE,
+) -> Tuple[dict, LightnessFit]:
+    """Load a colormap's data and its lightness fit, optimizing on a cache miss.
+    Fits with default lightness bounds are persisted to the colormap's data.
 
     Returns:
-        Tuple[dict, dict]: (json_data, fit)
+        Tuple[dict, LightnessFit]: (json_data, fit)
     """
     json_data, source = load_data_with_source(cmap_name)
     upgrade_schema(json_data)
@@ -130,9 +169,22 @@ def get_fit(
     if lightness is None:
         lightness = json_data["lightness"]
 
-    memo_key = (cmap_name, points_hash(json_data["points"]), fit_key(lightness, interpolation, smoothing))
+    constrained = l_dark is not None or l_light is not None
+    memo_key = (cmap_name, json_data["points_hash"], fit_key(lightness, interpolation, smoothing))
+    if constrained:
+        memo_key += (
+            bounds,
+            normalize_lightness_bounds(l_dark, "l_dark", bounds),
+            normalize_lightness_bounds(l_light, "l_light", bounds),
+        )
     if memo_key in _memo:
         return json_data, _memo[memo_key]
+
+    if constrained:
+        control_points = np.asarray(json_data["points"], dtype=np.float64)
+        fit = compute_fit(control_points, lightness, interpolation, smoothing, l_dark, l_light, bounds)
+        _memo[memo_key] = fit
+        return json_data, fit
 
     fit, changed = ensure_fit(json_data, lightness, interpolation, smoothing)
     if changed:

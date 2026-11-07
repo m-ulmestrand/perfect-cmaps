@@ -4,6 +4,7 @@ Usage:
     python -m perfect_cmaps.migrate                       # user app data folder
     python -m perfect_cmaps.migrate --package-dir perfect_cmaps/lab_control_points
     python -m perfect_cmaps.migrate --all-profiles        # fit every supported lightness profile
+    python -m perfect_cmaps.migrate --force               # recompute fits that are already stored
 """
 import argparse
 import json
@@ -15,7 +16,12 @@ from perfect_cmaps.lightness_fit import DEFAULT_INTERPOLATION, ensure_fit, upgra
 from perfect_cmaps.storage import atomic_write_json, data_dir
 
 
-def migrate_file(path: Path, all_profiles: bool = False, interpolations: List[str] = None) -> bool:
+def migrate_file(
+    path: Path,
+    all_profiles: bool = False,
+    interpolations: List[str] = None,
+    force: bool = False,
+) -> bool:
     with open(path, "r") as f:
         json_data = json.load(f)
 
@@ -27,12 +33,15 @@ def migrate_file(path: Path, all_profiles: bool = False, interpolations: List[st
     profiles = SUPPORTED_L_PROFILES if all_profiles else [json_data["lightness"]]
 
     changed = upgrade_schema(json_data)
+    if force and json_data["fits"]:
+        json_data["fits"] = {}
+        changed = True
     for interpolation in interpolations:
         for profile in profiles:
             fit, fit_changed = ensure_fit(json_data, profile, interpolation, None)
             if fit_changed:
                 print(f"  {path.stem}: {profile}|{interpolation} -> "
-                      f"scale={fit['scale']:.4f}, offset={fit['offset']:.4f}, fitness={fit['fitness']:.4f}")
+                      f"l_dark={fit.l_dark:.2f}, l_light={fit.l_light:.2f}, feasible={fit.feasible}")
             changed |= fit_changed
 
     if changed:
@@ -46,6 +55,8 @@ def main():
                         help="Migrate this folder (e.g. the package's lab_control_points) instead of the user app data folder.")
     parser.add_argument("--all-profiles", action="store_true",
                         help="Precompute fits for all supported lightness profiles, not just the saved one.")
+    parser.add_argument("--force", action="store_true",
+                        help="Drop and recompute stored fits, e.g. after changes to the optimization.")
     parser.add_argument("--interpolation", nargs="+", default=[DEFAULT_INTERPOLATION],
                         help=f"Interpolation kinds to precompute. Defaults to '{DEFAULT_INTERPOLATION}'.")
     args = parser.parse_args()
@@ -56,7 +67,7 @@ def main():
 
     n_changed = 0
     for path in files:
-        n_changed += migrate_file(path, args.all_profiles, args.interpolation)
+        n_changed += migrate_file(path, args.all_profiles, args.interpolation, args.force)
 
     print(f"Updated {n_changed} file(s).")
 

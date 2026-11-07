@@ -25,41 +25,41 @@
     "points_hash": "dcc096ba15fed24015ac52a8b8b22f54f12928f1",
     "fits": {
         "linear|quadratic|0": {
-            "scale": 0.9038586492125685,
-            "offset": 7.950003583849572,
-            "fitness": 0.9038586492125685,
+            "l_dark": 7.104571203213783,
+            "l_light": 98.89085337297924,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging|quadratic|0": {
-            "scale": 0.32986642001681976,
-            "offset": 42.9480668937608,
-            "fitness": 0.32986642001681976,
+            "l_dark": 39.154595524940014,
+            "l_light": 76.8884127451423,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted|quadratic|0": {
-            "scale": 0.4682197773249184,
-            "offset": 48.74884686876013,
-            "fitness": 0.4682197773249184,
+            "l_dark": 46.95284279744007,
+            "l_light": 97.21617641144823,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_sharper|quadratic|0": {
-            "scale": 0.2940383404876478,
-            "offset": 48.461173103842334,
-            "fitness": 0.2940383404876478,
+            "l_dark": 45.69846728636644,
+            "l_light": 78.9074713583552,
+            "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted_sharper|quadratic|0": {
-            "scale": 0.5005928498100742,
-            "offset": 43.15980209712142,
-            "fitness": 0.5005928498100742,
+            "l_dark": 43.08897526685487,
+            "l_light": 94.3397818155352,
+            "feasible": true,
             "n_ref": 1024
         },
         "flat|quadratic|0": {
-            "scale": 3.4949494749494954,
-            "offset": -100.0,
-            "fitness": 3.4949494749494954,
+            "l_dark": 68.83756146887961,
+            "l_light": 68.83756146887961,
+            "feasible": true,
             "n_ref": 1024
         }
     },
-    "version": 2
+    "version": 3
 }

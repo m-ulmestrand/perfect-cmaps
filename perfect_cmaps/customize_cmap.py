@@ -206,7 +206,7 @@ def create_cmap(
     num_points = 1000
     lab_points = interpolate_lab(clicked_points_array, num_values=num_points, profile=lightness)
     lab_points[:, 1:] = gaussian_filter1d(lab_points[:, 1:], sigma=num_points * 0.03, axis=0)
-    rgb_points = rgb_renormalized_lightness(lab_points)
+    rgb_points = np.clip(rgb_renormalized_lightness(lab_points, lightness), 0.0, 1.0)
 
     cdict = dict()
     space = np.linspace(0, 1, num_points)
