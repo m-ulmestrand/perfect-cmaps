@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Rectangle
 from matplotlib.widgets import Button, TextBox
@@ -45,16 +46,41 @@ EDGE = "#4a4a4f"
 TEXT = "#e6e6e6"
 MUTED = "#8e8e93"
 ACCENT = "#ffffff"
+PLACEHOLDER = "#6a6a70"
 PANEL_RGB = [int(PANEL[i:i + 2], 16) / 255 for i in (1, 3, 5)]
 
+
+
+def _available_fonts(preferred: List[str], fallback: str) -> List[str]:
+    """Filter a font preference list to the installed fonts, so matplotlib doesn't warn."""
+    installed = {font.name for font in font_manager.fontManager.ttflist}
+    return [name for name in preferred if name in installed] + [fallback]
+
+
+SANS_FONTS = _available_fonts(
+    ["Inter", "SF Pro Text", "Helvetica Neue", "Segoe UI", "Roboto", "Ubuntu", "Noto Sans",
+     "Open Sans", "Source Sans 3", "Source Sans Pro", "Arial", "Liberation Sans"],
+    "DejaVu Sans",
+)
+MONO_FONTS = _available_fonts(
+    ["JetBrains Mono", "SF Mono", "Menlo", "Cascadia Mono", "Consolas", "Fira Code", "Fira Mono",
+     "Roboto Mono", "Source Code Pro", "Ubuntu Mono", "Noto Sans Mono", "Liberation Mono"],
+    "DejaVu Sans Mono",
+)
+
 STYLE = {
+    "font.family": "sans-serif",
+    "font.sans-serif": SANS_FONTS,
+    "font.monospace": MONO_FONTS,
     "figure.facecolor": BACKGROUND,
     "axes.facecolor": PANEL,
     "axes.edgecolor": EDGE,
     "axes.labelcolor": MUTED,
     "axes.titlecolor": TEXT,
-    "axes.titlesize": 11,
-    "axes.titleweight": "bold",
+    "axes.titlesize": 12.5,
+    "axes.titleweight": "semibold",
+    "axes.titlepad": 8,
+    "axes.labelsize": 13,
     "text.color": TEXT,
     "xtick.color": MUTED,
     "ytick.color": MUTED,
@@ -191,24 +217,33 @@ class ColormapCreator:
             np.zeros((1, PREVIEW_SAMPLES, 3)), aspect="auto", interpolation="bilinear",
             extent=[0, 1, 0, 1],
         )
-        self.preview_title = self.ax_preview.set_title("", loc="left", fontsize=10)
+        self.preview_title = self.ax_preview.set_title("", loc="left", fontsize=11.5)
 
         # Help line / status
         self.help_text = self.fig.text(0.07, 0.065, HELP_TEXT, color=MUTED, fontsize=9, va="center")
 
         # Save controls, shown when all levels are chosen
         self.ax_name = self.fig.add_axes([0.13, 0.04, 0.43, 0.055])
-        self.name_box = TextBox(self.ax_name, "Name  ", initial=default_name,
+        self.default_name = default_name
+        self.name_box = TextBox(self.ax_name, "Name  ", initial="",
                                 color=PANEL, hovercolor="#333337", label_pad=0.02)
         self.name_box.label.set_color(TEXT)
         self.name_box.text_disp.set_color(TEXT)
+        self.name_box.text_disp.set_family("monospace")
+        # Greyed-out hint, shown while the field is empty; the default is used if nothing is typed
+        self.name_placeholder = self.ax_name.text(
+            *self.name_box.text_disp.get_position(), default_name,
+            transform=self.ax_name.transAxes, va="center", ha="left",
+            family="monospace", style="italic", color=PLACEHOLDER,
+        )
+        self.name_box.on_text_change(self._update_placeholder)
         self.ax_save = self.fig.add_axes([0.6, 0.04, 0.12, 0.055])
         self.save_button = Button(self.ax_save, "Save", color="#2f6f3e", hovercolor="#3c8a4e")
         self.ax_discard = self.fig.add_axes([0.74, 0.04, 0.12, 0.055])
         self.discard_button = Button(self.ax_discard, "Discard", color="#5a2a2a", hovercolor="#733636")
         for button in (self.save_button, self.discard_button):
             button.label.set_color(TEXT)
-            button.label.set_fontweight("bold")
+            button.label.set_fontweight("semibold")
         self.status_text = self.fig.text(0.07, 0.065, "", color=TEXT, fontsize=10, va="center")
         self._set_controls_visible(False)
 
@@ -218,6 +253,10 @@ class ColormapCreator:
         self.fig.canvas.mpl_connect("motion_notify_event", self._on_move)
         self.save_button.on_clicked(lambda _: self.save())
         self.discard_button.on_clicked(lambda _: self.discard())
+
+    def _update_placeholder(self, text: str):
+        self.name_placeholder.set_visible(not text)
+        self.fig.canvas.draw_idle()
 
     def _set_controls_visible(self, visible: bool):
         for ax in (self.ax_name, self.ax_save, self.ax_discard):
@@ -407,11 +446,15 @@ class ColormapCreator:
         self.swatch.set_facecolor(PANEL)
         self.info_text.set_text("")
         self._set_controls_visible(True)
+        # Focus the name field so the user can type a name and press Enter right away
+        self.name_box.begin_typing()
+        self.name_box.cursor_index = len(self.name_box.text)
+        self.name_box._rendercursor()
 
     def save(self) -> Optional[str]:
         if not self.finished or self.saved_name is not None:
             return self.saved_name
-        name = self.name_box.text.strip() or "custom_cmap"
+        name = self.name_box.text.strip() or self.default_name
         points_dict = {"points": np.array(self.points).tolist(), "lightness": self.lightness}
         # Precompute the default lightness fit so that get_cmap doesn't need to optimize
         ensure_fit(points_dict, self.lightness, DEFAULT_INTERPOLATION, None)
@@ -446,8 +489,13 @@ class ColormapCreator:
             self.undo()
 
     def _on_key(self, event):
-        if self.name_box.capturekeystrokes:
-            return  # Typing a name
+        if self.name_box.capturekeystrokes:  # Typing a name
+            if event.key in ("enter", "return"):
+                self.name_box.stop_typing()
+                self.save()
+            elif event.key == "escape":
+                self.name_box.stop_typing()
+            return
         if event.key == "backspace":
             self.undo()
         elif event.key == "v":
