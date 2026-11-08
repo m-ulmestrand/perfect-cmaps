@@ -106,7 +106,11 @@ def update_data(name: str, data: dict, source: str):
     if source == SOURCE_USER:
         atomic_write_json(data_dir / f"{name}.json", data)
     elif source == SOURCE_PACKAGE:
-        side = {"points_hash": data.get("points_hash"), "fits": data.get("fits", {})}
+        side = {
+            "version": data.get("version"),
+            "points_hash": data.get("points_hash"),
+            "fits": data.get("fits", {}),
+        }
         atomic_write_json(fit_cache_dir / f"{name}.json", side)
     else:
         raise ValueError(f"Unknown colormap source: {source}")

@@ -36,7 +36,7 @@ from perfect_cmaps.storage import (
 )
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 2
 N_REF = 1024
 
 DEFAULT_INTERPOLATION = "quadratic"
@@ -162,7 +162,9 @@ def get_fit(
     upgrade_schema(json_data)
     if source == SOURCE_PACKAGE:
         side = load_fit_side_cache(cmap_name)
-        if side.get("points_hash") == json_data["points_hash"]:
+        # Side caches from other schema versions (or from before side caches had a version)
+        # are ignored; they are overwritten when the next fit is stored
+        if side.get("version") == SCHEMA_VERSION and side.get("points_hash") == json_data["points_hash"]:
             # Shipped fits take precedence over locally computed ones
             json_data["fits"] = {**side.get("fits", {}), **json_data["fits"]}
 

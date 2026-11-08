@@ -85,38 +85,38 @@
     "points_hash": "6e95797f20077ffb5ceb5b0a322713fbd018a13c",
     "fits": {
         "linear|quadratic|0": {
-            "l_dark": 0.5330349793379773,
-            "l_light": 99.89154099623076,
+            "l_dark": 0.5332107149680568,
+            "l_light": 99.89535987602457,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging|quadratic|0": {
-            "l_dark": 59.0494102822782,
-            "l_light": 76.29324931332214,
+            "l_dark": 59.04614683827774,
+            "l_light": 76.2886171315052,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted|quadratic|0": {
-            "l_dark": 61.06428606099663,
-            "l_light": 98.23274145839852,
+            "l_dark": 61.05813945779751,
+            "l_light": 98.23557836095756,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging_sharper|quadratic|0": {
-            "l_dark": 61.298120851757204,
-            "l_light": 78.33361179700029,
+            "l_dark": 61.294647328635186,
+            "l_light": 78.328841559452,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted_sharper|quadratic|0": {
-            "l_dark": 53.69271108371526,
-            "l_light": 98.11634459105933,
+            "l_dark": 53.69046247873113,
+            "l_light": 98.10989176840992,
             "feasible": true,
             "n_ref": 1024
         },
         "flat|quadratic|0": {
-            "l_dark": 72.03801939538407,
-            "l_light": 72.03801939538407,
+            "l_dark": 72.03374377018008,
+            "l_light": 72.03374377018008,
             "feasible": true,
             "n_ref": 1024
         }

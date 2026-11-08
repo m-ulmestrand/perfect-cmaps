@@ -1,6 +1,4 @@
 import matplotlib.colors as mcolors
-from matplotlib import pyplot as plt
-from matplotlib import colormaps
 
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -8,7 +6,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 from typing import Tuple, List, Optional
 import argparse
-import cv2
 from pathlib import Path
 from tqdm import tqdm
 
@@ -204,6 +201,8 @@ def compare_cmaps(
         truncate (Tuple[float, float], optional): Keep only this part of each colormap,
             see ``get_cmap``. Defaults to None.
     """
+    from matplotlib import pyplot as plt
+
     assert show_plot or save_path is not None, "Must either display plot with argument 'show_plot' " \
         "or save figure with argument 'save_path'."
     
@@ -234,6 +233,9 @@ def compare_cmaps(
 
 
 def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
+    import cv2
+    from matplotlib import pyplot as plt
+
     # Create a figure with two rows, one for greyscale and one for colormap images
     num_images = len(image_paths)
     
@@ -343,6 +345,7 @@ def main():
     args = parse_args()
     
     if args.mpl_cmap:
+        from matplotlib import colormaps
         cmap = colormaps[args.colormap]
     else:
         cmap = get_cmap(

@@ -95,8 +95,8 @@
             "n_ref": 1024
         },
         "diverging|quadratic|0": {
-            "l_dark": 0.5582033889712785,
-            "l_light": 86.5483999924844,
+            "l_dark": 0.558139145428566,
+            "l_light": 86.55071786548264,
             "feasible": true,
             "n_ref": 1024
         },
@@ -107,8 +107,8 @@
             "n_ref": 1024
         },
         "diverging_sharper|quadratic|0": {
-            "l_dark": 0.5582033889712785,
-            "l_light": 99.64977828925292,
+            "l_dark": 0.558139145428566,
+            "l_light": 99.65343386721293,
             "feasible": true,
             "n_ref": 1024
         },

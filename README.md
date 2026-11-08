@@ -15,6 +15,14 @@ run: `python ./perfect_cmaps/customize_cmap.py --num_points 21 --lightness linea
 
 This specifies that your colormap will have 21 control points, which will later be interpolated for desired granularity, and that the colormap will have a linear lightness profile. 
 
+In the window, you choose one color per lightness level:
+- **Click** to choose a color. Clicks outside the gamut are pulled onto its boundary, keeping the hue.
+- **Right-click** or **Backspace** to undo the last color.
+- **V** to switch between the plain a\*b\* plane and a view where each gamut slice is stretched to fill the square. The stretched view keeps the hue angle, and the distance from the center is the chroma relative to the most saturated color of that hue, which makes the small slices near black and white easier to work with. Start in it with `--view square`.
+- **Esc** to quit without saving.
+
+When all colors are chosen, the final colormap is shown, and you can save it under a name.
+
 https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
 
 ### Generated colormap

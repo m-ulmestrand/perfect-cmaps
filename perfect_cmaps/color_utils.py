@@ -1,13 +1,12 @@
 import numpy as np
-from scipy.stats import beta
 from scipy.interpolate import interp1d
 from scipy.optimize import linprog
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
-from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
-from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import math
+
+from perfect_cmaps.colorspace import Lab_to_sRGB, sRGB_to_XYZ, XYZ_to_Lab
 
 from perfect_cmaps.storage import get_test_img_path
 
@@ -86,8 +85,10 @@ def copper_salt(x: np.ndarray, ijk: Union[Tuple[int, int, int], None] = None) ->
     i, j, k = unwrap_channels(ijk)
 
     result = np.zeros([*x.shape, 4])
-    dist = beta(2, 4)
-    pdf = dist.pdf
+    def pdf(t: np.ndarray) -> np.ndarray:
+        """Probability density of the Beta(2, 4) distribution."""
+        return 20 * t * (1 - t) ** 3
+
     envelope = diverging_envelope(x, c=4, x1=0.5)
     result[..., i] = pdf(x)
     result[..., k] = pdf(1-x)
@@ -196,29 +197,6 @@ def rgb_to_grayscale_lightness(rgb: np.ndarray) -> np.ndarray:
     return L_normalized
 
 
-def Lab_to_sRGB(lab_colors: np.ndarray) -> np.ndarray:
-    """
-    Convert CIE-LAB colors to sRGB color space.
-    
-    Parameters
-    ----------
-    lab_colors : ndarray
-        An array of Lab colors with shape (..., 3).
-    
-    Returns
-    -------
-    rgb_colors : ndarray
-        An array of sRGB colors with values in [0, 1].
-    """
-    # Convert Lab to XYZ
-    XYZ = Lab_to_XYZ(lab_colors)
-    
-    # Convert XYZ to sRGB
-    RGB = XYZ_to_sRGB(XYZ)
-    
-    return RGB
-
-
 # Margin (in L* units) kept from the gamut boundaries found by lightness_envelope
 LIGHTNESS_MARGIN = 1e-6
 
@@ -300,7 +278,7 @@ ENVELOPE_COARSE_SAMPLES = 100
 ENVELOPE_BISECTION_STEPS = 40
 
 
-def _in_gamut(L: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def in_gamut(L: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
     rgb = Lab_to_sRGB(np.column_stack((L, a, b)))
     return np.all((rgb >= 0.0) & (rgb <= 1.0), axis=1)
 
@@ -317,7 +295,7 @@ def lightness_envelope(lab_colors: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     n_samples = ENVELOPE_COARSE_SAMPLES
 
     L_samples = np.linspace(0.0, 100.0, n_samples)
-    inside = _in_gamut(
+    inside = in_gamut(
         np.repeat(L_samples, n_colors), np.tile(a, n_samples), np.tile(b, n_samples)
     ).reshape(n_samples, n_colors)
 
@@ -329,7 +307,7 @@ def lightness_envelope(lab_colors: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Move L_inside towards the gamut edge between L_inside and L_outside."""
         for _ in range(ENVELOPE_BISECTION_STEPS):
             L_mid = (L_inside + L_outside) / 2
-            mid_inside = _in_gamut(L_mid, a, b)
+            mid_inside = in_gamut(L_mid, a, b)
             L_inside = np.where(mid_inside, L_mid, L_inside)
             L_outside = np.where(mid_inside, L_outside, L_mid)
         return L_inside
@@ -523,6 +501,8 @@ def rgb_renormalized_lightness(
 
 
 def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
+    from matplotlib import pyplot as plt
+
     gradient = np.linspace(0, 1, num_points)
     gradient = np.vstack((gradient, gradient))
 

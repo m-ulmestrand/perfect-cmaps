@@ -90,37 +90,37 @@
     "fits": {
         "linear|quadratic|0": {
             "l_dark": 1e-06,
-            "l_light": 99.72208785188192,
+            "l_light": 99.72581243870367,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging|quadratic|0": {
-            "l_dark": 0.7847407094760386,
-            "l_light": 87.82107196772031,
+            "l_dark": 0.7847248523881419,
+            "l_light": 87.8233415497384,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted|quadratic|0": {
-            "l_dark": 53.15196088348208,
-            "l_light": 89.06605261738595,
+            "l_dark": 53.158781058076706,
+            "l_light": 89.06175300486986,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging_sharper|quadratic|0": {
-            "l_dark": 0.7847407094760386,
-            "l_light": 93.78048205994223,
+            "l_dark": 0.7847248523881419,
+            "l_light": 93.7819587960361,
             "feasible": true,
             "n_ref": 1024
         },
         "diverging_inverted_sharper|quadratic|0": {
-            "l_dark": 49.00710545133486,
-            "l_light": 85.04538059185965,
+            "l_dark": 49.01523185598645,
+            "l_light": 85.04207521054504,
             "feasible": true,
             "n_ref": 1024
         },
         "flat|quadratic|0": {
-            "l_dark": 62.347344857267444,
-            "l_light": 62.347344857267444,
+            "l_dark": 62.35107781697691,
+            "l_light": 62.35107781697691,
             "feasible": true,
             "n_ref": 1024
         }
