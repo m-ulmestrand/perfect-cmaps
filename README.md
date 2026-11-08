@@ -8,7 +8,8 @@ To stay as true as possible to the lightness achieved by a true grayscale colorm
 - `create_cmap()`: Create your own colormap.
 - `get_cmap()`: Get a named colormap from the library -- an instance of `matplotlib.colors.LinearSegmentedColormap`.
 - `list_cmaps()`: Lists all available local and internal colormaps.
-- `compare_cmaps()`: Plots a comparison of given colormaps by names.
+- `compare_cmaps()`: Plots a comparison of colormaps by name, or of all available colormaps if no names are given.
+- `plot_cmap()`: Plots a single colormap (or colormap name) with its lightness profile, a test image and its color channels.
 
 ### Example of creating a custom colormap
 run: `python ./perfect_cmaps/customize_cmap.py --num_points 21 --lightness linear` or a similar command

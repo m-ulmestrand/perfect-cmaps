@@ -10,7 +10,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from perfect_cmaps.color_utils import *
-from perfect_cmaps.storage import get_test_img_path
+from perfect_cmaps.storage import get_test_img_path, list_cmaps
 from perfect_cmaps.lightness_fit import get_fit, build_lab
 
 
@@ -170,9 +170,9 @@ def get_cmap(
 
 
 def compare_cmaps(
-        names: List[str], 
-        num_points: int = 100, 
-        figsize: Tuple[float, float] = (8, 8),
+        names: Optional[List[str]] = None,
+        num_points: int = 100,
+        figsize: Optional[Tuple[float, float]] = None,
         interpolation: str = "quadratic",
         show_plot: bool = True,
         smoothing: Optional[float] = None,
@@ -182,12 +182,14 @@ def compare_cmaps(
         bounds: str = DEFAULT_BOUNDS_MODE,
         truncate: Optional[Tuple[float, float]] = None,
     ):
-    """Show a comparison of colormaps, given their names. Can be used with list_cmaps(), for example.
+    """Show a comparison of colormaps, given their names.
 
     Args:
-        names (List[str]): Names of colormaps.
+        names (List[str], optional): Names of colormaps. Defaults to all available
+            colormaps, as given by ``list_cmaps()``.
         num_points (int, optional): Number of points to display in gradients. Defaults to 100.
-        figsize (Tuple[float, float], optional): Size of the comparison plot. Defaults to (8, 8).
+        figsize (Tuple[float, float], optional): Size of the comparison plot. Defaults to
+            a width of 8 inches and a height that grows with the number of colormaps.
         interpolation (str, optional): Interpolation method for the a* and b* channels
             between control points. Defaults to 'quadratic'.
         show_plot (bool, optional): Whether to show the comparison in a window. Defaults to True.
@@ -206,14 +208,18 @@ def compare_cmaps(
     assert show_plot or save_path is not None, "Must either display plot with argument 'show_plot' " \
         "or save figure with argument 'save_path'."
     
+    if names is None:
+        names = list_cmaps()
+    assert len(names) > 0, "No colormaps to compare."
+    if figsize is None:
+        figsize = (8, 0.3 * len(names) + 0.4)
+
     gradient = np.linspace(0, 1, num_points)
     gradient = np.vstack((gradient, gradient))
 
-    fig, axes = plt.subplots(nrows=len(names), figsize=figsize)
-    if len(names) == 1:
-        axes = [axes]  # Make iterable if only one axis
+    fig, axes = plt.subplots(nrows=len(names), figsize=figsize, squeeze=False)
 
-    for ax, name in tqdm(zip(axes, names), "Creating colormaps", total=len(names)):
+    for ax, name in tqdm(zip(axes[:, 0], names), "Creating colormaps", total=len(names)):
         cmap = get_cmap(
             name, num_points, interpolation=interpolation, smoothing=smoothing,
             l_dark=l_dark, l_light=l_light, bounds=bounds, truncate=truncate,
@@ -221,9 +227,10 @@ def compare_cmaps(
         ax: plt.Axes
         ax.imshow(gradient, aspect="auto", cmap=cmap)
         ax.set_axis_off()
-        ax.set_title(name, loc='left', fontsize=10, pad=4)
+        # Name to the left of the gradient, so it never covers the colors
+        ax.text(-0.015, 0.5, name, transform=ax.transAxes, ha="right", va="center", fontsize=10)
 
-    plt.tight_layout()
+    fig.tight_layout(h_pad=0.3)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')

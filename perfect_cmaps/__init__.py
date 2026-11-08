@@ -1,8 +1,9 @@
 from .colormaps import get_cmap, compare_cmaps
+from .color_utils import plot_cmap
 from .storage import list_cmaps
 
 
-__all__ = ["get_cmap", "create_cmap", "list_cmaps", "compare_cmaps"]
+__all__ = ["get_cmap", "create_cmap", "list_cmaps", "compare_cmaps", "plot_cmap"]
 __version__ = "1.5.0"
 
 

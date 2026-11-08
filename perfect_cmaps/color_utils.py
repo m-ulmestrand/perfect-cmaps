@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d
 from scipy.optimize import linprog
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import Colormap, LinearSegmentedColormap
 import math
 
 from perfect_cmaps.colorspace import Lab_to_sRGB, sRGB_to_XYZ, XYZ_to_Lab
@@ -500,8 +500,18 @@ def rgb_renormalized_lightness(
     return apply_lightness_fit(lab_colors, p_hat, fit)
 
 
-def plot_cmap(colormap: LinearSegmentedColormap, num_points: int = 1000):
+def plot_cmap(colormap: Union[str, Colormap], num_points: int = 1000):
+    """Plot a colormap together with its lightness, a test image and its color channels.
+
+    Args:
+        colormap (str | Colormap): A colormap, or the name of one, see ``list_cmaps()``.
+        num_points (int, optional): Number of points to sample the colormap at. Defaults to 1000.
+    """
     from matplotlib import pyplot as plt
+
+    if isinstance(colormap, str):
+        from perfect_cmaps.colormaps import get_cmap  # Imported here to avoid a circular import
+        colormap = get_cmap(colormap, num_points)
 
     gradient = np.linspace(0, 1, num_points)
     gradient = np.vstack((gradient, gradient))
