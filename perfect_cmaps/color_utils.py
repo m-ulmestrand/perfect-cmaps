@@ -1,4 +1,3 @@
-import matplotlib.colors as mcolors
 import numpy as np
 from scipy.stats import beta
 from scipy.interpolate import interp1d
@@ -195,19 +194,6 @@ def rgb_to_grayscale_lightness(rgb: np.ndarray) -> np.ndarray:
     L_normalized = L / 100.0
 
     return L_normalized
-
-
-def truncate_colormap(
-        cmap: mcolors.LinearSegmentedColormap, 
-        minval: float = 0.0, 
-        maxval: float = 1.0, 
-        n: int = 1000
-    ) -> mcolors.LinearSegmentedColormap:
-
-    new_cmap = mcolors.LinearSegmentedColormap.from_list(
-        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
-        cmap(np.linspace(minval, maxval, n)))
-    return new_cmap
 
 
 def Lab_to_sRGB(lab_colors: np.ndarray) -> np.ndarray:

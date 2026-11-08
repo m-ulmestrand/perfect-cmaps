@@ -43,6 +43,15 @@ def _apply_fit(
     return np.clip(rgb_values, 0.0, 1.0)
 
 
+def _validate_truncate(truncate: Optional[Tuple[float, float]]) -> Tuple[float, float]:
+    if truncate is None:
+        return 0.0, 1.0
+    low, high = (float(t) for t in truncate)
+    if not 0.0 <= low < high <= 1.0:
+        raise ValueError(f"truncate must satisfy 0 <= low < high <= 1, got ({low}, {high})")
+    return low, high
+
+
 def get_cmap(
         cmap_name: str, 
         n: int = 100, 
@@ -53,6 +62,7 @@ def get_cmap(
         l_dark: LightnessBounds = None,
         l_light: LightnessBounds = None,
         bounds: str = DEFAULT_BOUNDS_MODE,
+        truncate: Optional[Tuple[float, float]] = None,
     ) -> mcolors.LinearSegmentedColormap:
     
     """Get a custom colormap as a matplotlib LinearSegmentedColormap. 
@@ -101,14 +111,21 @@ def get_cmap(
             values leave little room for the other, since the range shrinks to zero at
             the ends. The reachable ranges depend on the lightness profile, interpolation
             and smoothing. With "absolute", the bounds are L* values (0-100).
+        truncate (Tuple[float, float], optional): Keep only the part of the colormap
+            between these positions (0-1), e.g. (0.2, 0.9). The colors are exactly those of
+            the full colormap at the same positions, so lightness bounds refer to the full
+            colormap. The truncated colormap still has ``n`` colors. Defaults to None.
 
     Returns:
         mcolors.LinearSegmentedColormap: Matplotlib-formatted colormap
     """
     if bounds not in BOUNDS_MODES:
         raise ValueError(f"bounds must be one of {BOUNDS_MODES}, got '{bounds}'")
+    truncate_low, truncate_high = _validate_truncate(truncate)
 
-    space = np.linspace(0, 1, n)
+    # Build the full colormap with enough samples that the kept part has at least n of them
+    n_full = n if truncate is None else max(n, int(np.ceil((n - 1) / (truncate_high - truncate_low))) + 1)
+    space = np.linspace(0, 1, n_full)
 
     if not cmap_name in CMAP_DICT.keys():
         if lightness is not None:
@@ -119,7 +136,7 @@ def get_cmap(
             lightness = json_data["lightness"]
 
         control_points = np.array(json_data["points"])
-        lab_values = build_lab(control_points, n, lightness, interpolation, smoothing)
+        lab_values = build_lab(control_points, n_full, lightness, interpolation, smoothing)
         rgb_values = _apply_fit(lab_values, fit, lightness, l_dark, l_light, bounds)
 
     else:
@@ -140,7 +157,12 @@ def get_cmap(
             assert lightness in SUPPORTED_L_PROFILES, f"Lightness profile {lightness} not supported"
             lab_values = XYZ_to_Lab(sRGB_to_XYZ(rgb_values[:, :3]))
             rgb_values = np.clip(rgb_renormalized_lightness(lab_values, lightness, l_dark, l_light, bounds), 0.0, 1.0)
-    
+
+    if truncate is not None:
+        positions = np.linspace(truncate_low, truncate_high, n)
+        rgb_values = np.column_stack([np.interp(positions, space, rgb_values[:, c]) for c in range(3)])
+        space = np.linspace(0, 1, n)
+
     cdict = dict()
 
     for num, col in enumerate(["red", "green", "blue"]):
@@ -161,6 +183,7 @@ def compare_cmaps(
         l_dark: LightnessBounds = None,
         l_light: LightnessBounds = None,
         bounds: str = DEFAULT_BOUNDS_MODE,
+        truncate: Optional[Tuple[float, float]] = None,
     ):
     """Show a comparison of colormaps, given their names. Can be used with list_cmaps(), for example.
 
@@ -178,6 +201,8 @@ def compare_cmaps(
             see ``get_cmap``. Defaults to None.
         bounds (str): Whether ``l_dark`` and ``l_light`` are "relative" (default) or
             "absolute", see ``get_cmap``.
+        truncate (Tuple[float, float], optional): Keep only this part of each colormap,
+            see ``get_cmap``. Defaults to None.
     """
     assert show_plot or save_path is not None, "Must either display plot with argument 'show_plot' " \
         "or save figure with argument 'save_path'."
@@ -192,7 +217,7 @@ def compare_cmaps(
     for ax, name in tqdm(zip(axes, names), "Creating colormaps", total=len(names)):
         cmap = get_cmap(
             name, num_points, interpolation=interpolation, smoothing=smoothing,
-            l_dark=l_dark, l_light=l_light, bounds=bounds,
+            l_dark=l_dark, l_light=l_light, bounds=bounds, truncate=truncate,
         )
         ax: plt.Axes
         ax.imshow(gradient, aspect="auto", cmap=cmap)
