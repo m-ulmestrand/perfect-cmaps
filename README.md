@@ -35,7 +35,12 @@ To test out your colormap, you can use the function `get_cmap()` or use the main
 
 `python ./perfect_cmaps/colormaps.py --colormap test_colormap -n 1000 --interpolation quadratic --smoothing 0.03`
 
-Here' the colormap was named `test_colormap`, and we specify the colormap to have 1000 points, with quadratic interpolation and some amount of smoothing applied. 
+```
+import perfect_cmaps as pcm
+cmap = pcm.get_cmap("test_colormap", n=1000, interpolation="quadratic", smoothing=0.03)
+pcm.plot_cmap(cmap)
+```
+Here we specify to use a colormap called `test_colormap` and create the colormap with 1000 points, with quadratic interpolation and some amount of smoothing applied. 
 
 ![Generated colormap](assets/test_colormap.png)
 
