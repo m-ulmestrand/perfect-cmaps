@@ -325,16 +325,25 @@ def parse_args():
     arg_parser.add_argument(
         "--l_dark",
         type=float,
-        default=None,
-        help="The lightness value for the dark end of the colormap"
+        nargs='+',
+        default=(0.0, 0.0),
+        help="The lightness value range for the dark end of the colormap"
     )
     arg_parser.add_argument(
         "--l_light",
         type=float,
-        default=None,
-        help="The lightness value for the light end of the colormap"
+        nargs='+',
+        default=(1.0, 1.0),
+        help="The lightness value range for the light end of the colormap"
     )
-    return arg_parser.parse_args()
+    args = arg_parser.parse_args()
+    if len(args.l_dark) == 1:
+        args.l_dark = args.l_dark * 2
+
+    if len(args.l_light) == 1:
+        args.l_light = args.l_light * 2
+
+    return args
 
 
 """
