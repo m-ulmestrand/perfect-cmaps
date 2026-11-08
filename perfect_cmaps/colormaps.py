@@ -368,7 +368,7 @@ def main():
             l_light=args.l_light
         )
 
-    plot_colormap(cmap, args.num_points)
+    plot_cmap(cmap, args.num_points)
 
     test_images = [
         "charcoal4_49721153188_o-scaled.jpg",

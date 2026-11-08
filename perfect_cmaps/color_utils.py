@@ -500,7 +500,7 @@ def rgb_renormalized_lightness(
     return apply_lightness_fit(lab_colors, p_hat, fit)
 
 
-def plot_colormap(colormap: LinearSegmentedColormap, num_points: int = 1000):
+def plot_cmap(colormap: LinearSegmentedColormap, num_points: int = 1000):
     from matplotlib import pyplot as plt
 
     gradient = np.linspace(0, 1, num_points)
