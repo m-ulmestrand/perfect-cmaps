@@ -1,6 +1,4 @@
 import matplotlib.colors as mcolors
-from matplotlib import pyplot as plt
-from matplotlib import colormaps
 
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -8,13 +6,47 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 from typing import Tuple, List, Optional
 import argparse
-import cv2
-from scipy.ndimage import gaussian_filter1d
 from pathlib import Path
 from tqdm import tqdm
 
 from perfect_cmaps.color_utils import *
-from perfect_cmaps.storage import load_data, get_test_img_path
+from perfect_cmaps.storage import get_test_img_path, list_cmaps
+from perfect_cmaps.lightness_fit import get_fit, build_lab
+
+
+# Tolerance for out-of-gamut values when applying a cached lightness fit
+# (computed on a reference grid) at a different resolution.
+GAMUT_TOLERANCE = 1e-3
+
+
+def _apply_fit(
+    lab_values: np.ndarray,
+    fit: LightnessFit,
+    lightness: str,
+    l_dark: LightnessBounds,
+    l_light: LightnessBounds,
+    bounds: str,
+) -> np.ndarray:
+    """Apply a cached lightness fit, falling back to a fresh optimization
+    if the result is noticeably out of gamut at this resolution."""
+    p_hat = normalized_lightness_profile(lab_values.shape[0], lightness)
+    if not fit.feasible:
+        warn_infeasible()
+        return np.clip(apply_lightness_fit(lab_values, p_hat, fit), 0.0, 1.0)
+
+    rgb_values = apply_lightness_fit(lab_values, p_hat, fit)
+    if np.any(rgb_values < -GAMUT_TOLERANCE) or np.any(rgb_values > 1.0 + GAMUT_TOLERANCE):
+        rgb_values = rgb_renormalized_lightness(lab_values, lightness, l_dark, l_light, bounds)
+    return np.clip(rgb_values, 0.0, 1.0)
+
+
+def _validate_truncate(truncate: Optional[Tuple[float, float]]) -> Tuple[float, float]:
+    if truncate is None:
+        return 0.0, 1.0
+    low, high = (float(t) for t in truncate)
+    if not 0.0 <= low < high <= 1.0:
+        raise ValueError(f"truncate must satisfy 0 <= low < high <= 1, got ({low}, {high})")
+    return low, high
 
 
 def get_cmap(
@@ -23,7 +55,11 @@ def get_cmap(
         ijk: Tuple = None, 
         lightness: str = None,
         interpolation: str = "quadratic",
-        smoothing: float = None
+        smoothing: float = None,
+        l_dark: LightnessBounds = None,
+        l_light: LightnessBounds = None,
+        bounds: str = DEFAULT_BOUNDS_MODE,
+        truncate: Optional[Tuple[float, float]] = None,
     ) -> mcolors.LinearSegmentedColormap:
     
     """Get a custom colormap as a matplotlib LinearSegmentedColormap. 
@@ -48,50 +84,82 @@ def get_cmap(
         ijk (Tuple, optional): Order of the channels for the two algorithmic colormaps.
             Typically you would choose a permutation of (0, 1, 2), such as (2, 1, 0). 
             Defaults to None, which amounts to the default permutation of the colormaps.
-        lightness (str, optional): Lightness profile - only applies for the Lab
-            control points. Defaults to None, which means the lightness profile 
-            the chosen colormap was saved with.
-        interpolation (str): Interpolation method for L values. Defaults to 'quadratic.'
+        lightness (str, optional): Lightness profile. Defaults to None, which means the
+            lightness profile the chosen colormap was saved with, or the native lightness
+            of the algorithmic colormaps.
+        interpolation (str): Interpolation method for the a* and b* channels between
+            control points. Defaults to 'quadratic'.
         smoothing (float): Gaussian smoothing of colormap in Lab space, 
             applied after interpolation. Defaults to None.
+        l_dark (float | Tuple[float, float], optional): Bounds on the lightness of the
+            darkest point of the colormap, as (low, high) or a single fixed value.
+            For diverging profiles, this is the lightness of the edges (or the center,
+            for the inverted variants). Defaults to None, meaning no constraint.
+        l_light (float | Tuple[float, float], optional): Bounds on the lightness of the
+            lightest point of the colormap, like ``l_dark``. For the flat profile, the
+            constant lightness must satisfy both ``l_dark`` and ``l_light``.
+            Within the bounds, the lightness range is maximized (for the flat profile,
+            the middle of the feasible lightness interval is chosen). Raises a
+            ValueError if the bounds can't be met within the sRGB gamut.
+        bounds (str): How ``l_dark`` and ``l_light`` are interpreted. Defaults to "relative":
+            fractions (0-1) of the lightness each of them can reach within the gamut,
+            e.g. ``l_dark=0.1`` is 10% of the way from the darkest to the lightest
+            reachable value of the darkest point. Note that high ``l_dark`` or low ``l_light``
+            values leave little room for the other, since the range shrinks to zero at
+            the ends. The reachable ranges depend on the lightness profile, interpolation
+            and smoothing. With "absolute", the bounds are L* values (0-100).
+        truncate (Tuple[float, float], optional): Keep only the part of the colormap
+            between these positions (0-1), e.g. (0.2, 0.9). The colors are exactly those of
+            the full colormap at the same positions, so lightness bounds refer to the full
+            colormap. The truncated colormap still has ``n`` colors. Defaults to None.
 
     Returns:
         mcolors.LinearSegmentedColormap: Matplotlib-formatted colormap
     """
-    space = np.linspace(0, 1, n)
+    if bounds not in BOUNDS_MODES:
+        raise ValueError(f"bounds must be one of {BOUNDS_MODES}, got '{bounds}'")
+    truncate_low, truncate_high = _validate_truncate(truncate)
+
+    # Build the full colormap with enough samples that the kept part has at least n of them
+    n_full = n if truncate is None else max(n, int(np.ceil((n - 1) / (truncate_high - truncate_low))) + 1)
+    space = np.linspace(0, 1, n_full)
 
     if not cmap_name in CMAP_DICT.keys():
-        json_data = load_data(cmap_name)
-        control_points = np.array(json_data["points"])
-
-        if lightness is None:
-            lightness = json_data["lightness"]
-        else:
+        if lightness is not None:
             assert lightness in SUPPORTED_L_PROFILES, f"Lightness profile {lightness} not supported"
 
-        interpolated_values = interpolate_lab(control_points, n, lightness, interpolation)
-        if smoothing is not None and smoothing > 0.0:
-            sigma = smoothing * n
-            interpolated_values[:, 1:] = gaussian_filter1d(interpolated_values[:, 1:], sigma=sigma, axis=0)
+        json_data, fit = get_fit(cmap_name, lightness, interpolation, smoothing, l_dark, l_light, bounds)
+        if lightness is None:
+            lightness = json_data["lightness"]
 
-        rgb_values = rgb_renormalized_lightness(interpolated_values, 500, 500)
-    
+        control_points = np.array(json_data["points"])
+        lab_values = build_lab(control_points, n_full, lightness, interpolation, smoothing)
+        rgb_values = _apply_fit(lab_values, fit, lightness, l_dark, l_light, bounds)
+
     else:
         color_function = CMAP_DICT[cmap_name]
         rgb_values = color_function(space, ijk)
         reoptimize_map = False
         
-        if color_function in (cold_blooded_l, cold_blooded) and lightness == "linear":
+        if color_function in (cold_blooded_l, cold_blooded) and lightness == "linear" \
+                and l_dark is None and l_light is None:
             reoptimize_map = False
         
-        elif lightness is not None:
+        elif lightness is not None or l_dark is not None or l_light is not None:
             reoptimize_map = True
 
         if reoptimize_map:
+            if lightness is None:
+                lightness = "linear"
+            assert lightness in SUPPORTED_L_PROFILES, f"Lightness profile {lightness} not supported"
             lab_values = XYZ_to_Lab(sRGB_to_XYZ(rgb_values[:, :3]))
-            lab_values[:, 0] = get_lightness_profile(n, lightness)
-            rgb_values, _, _ = rgb_renormalized_lightness(lab_values, 200, 500)
-    
+            rgb_values = np.clip(rgb_renormalized_lightness(lab_values, lightness, l_dark, l_light, bounds), 0.0, 1.0)
+
+    if truncate is not None:
+        positions = np.linspace(truncate_low, truncate_high, n)
+        rgb_values = np.column_stack([np.interp(positions, space, rgb_values[:, c]) for c in range(3)])
+        space = np.linspace(0, 1, n)
+
     cdict = dict()
 
     for num, col in enumerate(["red", "green", "blue"]):
@@ -102,44 +170,67 @@ def get_cmap(
 
 
 def compare_cmaps(
-        names: List[str], 
-        num_points: int = 100, 
-        figsize: Tuple[float, float] = (8, 8),
+        names: Optional[List[str]] = None,
+        num_points: int = 100,
+        figsize: Optional[Tuple[float, float]] = None,
         interpolation: str = "quadratic",
         show_plot: bool = True,
         smoothing: Optional[float] = None,
-        save_path: Optional[str] = None
+        save_path: Optional[str] = None,
+        l_dark: LightnessBounds = None,
+        l_light: LightnessBounds = None,
+        bounds: str = DEFAULT_BOUNDS_MODE,
+        truncate: Optional[Tuple[float, float]] = None,
     ):
-    """Show a comparison of colormaps, given their names. Can be used with list_cmaps(), for example.
+    """Show a comparison of colormaps, given their names.
 
     Args:
-        names (List[str]): Names of colormaps.
+        names (List[str], optional): Names of colormaps. Defaults to all available
+            colormaps, as given by ``list_cmaps()``.
         num_points (int, optional): Number of points to display in gradients. Defaults to 100.
-        figsize (Tuple[float, float], optional): Size of the comparison plot. Defaults to (8, 8).
-        interpolation (str, optional): Interpolation method for L values. Defaults to 'quadratic'.
+        figsize (Tuple[float, float], optional): Size of the comparison plot. Defaults to
+            a width of 8 inches and a height that grows with the number of colormaps.
+        interpolation (str, optional): Interpolation method for the a* and b* channels
+            between control points. Defaults to 'quadratic'.
         show_plot (bool, optional): Whether to show the comparison in a window. Defaults to True.
         smoothing (float, optional): Gaussian smoothing of colormap in Lab space, 
             applied after interpolation. Defaults to None.
         save_path (Optional[str], optional): Optional save path for the plot. Defaults to None.
+        l_dark, l_light (optional): Lightness bounds of the darkest and lightest points,
+            see ``get_cmap``. Defaults to None.
+        bounds (str): Whether ``l_dark`` and ``l_light`` are "relative" (default) or
+            "absolute", see ``get_cmap``.
+        truncate (Tuple[float, float], optional): Keep only this part of each colormap,
+            see ``get_cmap``. Defaults to None.
     """
+    from matplotlib import pyplot as plt
+
     assert show_plot or save_path is not None, "Must either display plot with argument 'show_plot' " \
         "or save figure with argument 'save_path'."
     
+    if names is None:
+        names = list_cmaps()
+    assert len(names) > 0, "No colormaps to compare."
+    if figsize is None:
+        figsize = (8, 0.3 * len(names) + 0.4)
+
     gradient = np.linspace(0, 1, num_points)
     gradient = np.vstack((gradient, gradient))
 
-    fig, axes = plt.subplots(nrows=len(names), figsize=figsize)
-    if len(names) == 1:
-        axes = [axes]  # Make iterable if only one axis
+    fig, axes = plt.subplots(nrows=len(names), figsize=figsize, squeeze=False)
 
-    for ax, name in tqdm(zip(axes, names), "Creating colormaps", total=len(names)):
-        cmap = get_cmap(name, num_points, interpolation=interpolation, smoothing=smoothing)
+    for ax, name in tqdm(zip(axes[:, 0], names), "Creating colormaps", total=len(names)):
+        cmap = get_cmap(
+            name, num_points, interpolation=interpolation, smoothing=smoothing,
+            l_dark=l_dark, l_light=l_light, bounds=bounds, truncate=truncate,
+        )
         ax: plt.Axes
         ax.imshow(gradient, aspect="auto", cmap=cmap)
         ax.set_axis_off()
-        ax.set_title(name, loc='left', fontsize=10, pad=4)
+        # Name to the left of the gradient, so it never covers the colors
+        ax.text(-0.015, 0.5, name, transform=ax.transAxes, ha="right", va="center", fontsize=10)
 
-    plt.tight_layout()
+    fig.tight_layout(h_pad=0.3)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -149,6 +240,9 @@ def compare_cmaps(
 
 
 def plot_images_with_colormap(image_paths: List[Path], colormap='viridis'):
+    import cv2
+    from matplotlib import pyplot as plt
+
     # Create a figure with two rows, one for greyscale and one for colormap images
     num_images = len(image_paths)
     
@@ -235,7 +329,28 @@ def parse_args():
         help="Python script for colormap handling with perceptually uniform colormaps. " +
              "Run as a standalone script or import and use the function 'get_colormap' in your own code."
     )
-    return arg_parser.parse_args()
+    arg_parser.add_argument(
+        "--l_dark",
+        type=float,
+        nargs='+',
+        default=(0.0, 0.0),
+        help="The lightness value range for the dark end of the colormap"
+    )
+    arg_parser.add_argument(
+        "--l_light",
+        type=float,
+        nargs='+',
+        default=(1.0, 1.0),
+        help="The lightness value range for the light end of the colormap"
+    )
+    args = arg_parser.parse_args()
+    if len(args.l_dark) == 1:
+        args.l_dark = args.l_dark * 2
+
+    if len(args.l_light) == 1:
+        args.l_light = args.l_light * 2
+
+    return args
 
 
 """
@@ -246,6 +361,7 @@ def main():
     args = parse_args()
     
     if args.mpl_cmap:
+        from matplotlib import colormaps
         cmap = colormaps[args.colormap]
     else:
         cmap = get_cmap(
@@ -254,10 +370,12 @@ def main():
             ijk=args.ijk,
             lightness=args.lightness, 
             interpolation=args.interpolation,
-            smoothing=args.smoothing
+            smoothing=args.smoothing,
+            l_dark=args.l_dark,
+            l_light=args.l_light
         )
 
-    plot_colormap(cmap, args.num_points)
+    plot_cmap(cmap, args.num_points)
 
     test_images = [
         "charcoal4_49721153188_o-scaled.jpg",

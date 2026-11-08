@@ -8,21 +8,39 @@ To stay as true as possible to the lightness achieved by a true grayscale colorm
 - `create_cmap()`: Create your own colormap.
 - `get_cmap()`: Get a named colormap from the library -- an instance of `matplotlib.colors.LinearSegmentedColormap`.
 - `list_cmaps()`: Lists all available local and internal colormaps.
-- `compare_cmaps()`: Plots a comparison of given colormaps by names.
+- `compare_cmaps()`: Plots a comparison of colormaps by name, or of all available colormaps if no names are given.
+- `plot_cmap()`: Plots a single colormap (or colormap name) with its lightness profile, a test image and its color channels.
 
 ### Example of creating a custom colormap
 run: `python ./perfect_cmaps/customize_cmap.py --num_points 21 --lightness linear` or a similar command
 
 This specifies that your colormap will have 21 control points, which will later be interpolated for desired granularity, and that the colormap will have a linear lightness profile. 
 
-https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
+In the window, you choose one color per lightness level:
+- **Click** to choose a color. Clicks outside the gamut are pulled onto its boundary, keeping the hue.
+- **Right-click** or **Backspace** to undo the last color.
+- **V** to switch between the plain a\*b\* plane and a view where each gamut slice is stretched to fill the square. The stretched view keeps the hue angle, and the distance from the center is the chroma relative to the most saturated color of that hue, which makes the small slices near black and white easier to work with. Start in it with `--view square`.
+- **Esc** to quit without saving.
+
+When all colors are chosen, the final colormap is shown, and you can name it and save it.
+
+https://github.com/user-attachments/assets/83e53b18-62d8-4003-b7ef-ad37042df294
+
+You can also change the view to a square-transformed version of the CIELAB gamut slices, which can make it easier to place control points:
+
+https://github.com/user-attachments/assets/c8f72af1-411e-49bf-8fb5-7bbd9b85efd3
 
 ### Generated colormap
 To test out your colormap, you can use the function `get_cmap()` or use the main function from `colormaps.py`:
 
 `python ./perfect_cmaps/colormaps.py --colormap test_colormap -n 1000 --interpolation quadratic --smoothing 0.03`
 
-Here' the colormap was named `test_colormap`, and we specify the colormap to have 1000 points, with quadratic interpolation and some amount of smoothing applied. 
+```
+import perfect_cmaps as pcm
+cmap = pcm.get_cmap("test_colormap", n=1000, interpolation="quadratic", smoothing=0.03)
+pcm.plot_cmap(cmap)
+```
+Here we specify to use a colormap called `test_colormap` and create the colormap with 1000 points, with quadratic interpolation and some amount of smoothing applied. 
 
 ![Generated colormap](assets/test_colormap.png)
 
