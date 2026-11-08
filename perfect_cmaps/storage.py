@@ -81,14 +81,6 @@ def load_data_with_source(filename: str) -> Tuple[dict, str]:
     raise FileNotFoundError(f"{filename} not found in internal or app data folders.")
 
 
-def load_data(filename: str) -> dict:
-    """
-    Load data from the internal package folder first.
-    If not found, try the custom app data folder.
-    """
-    return load_data_with_source(filename)[0]
-
-
 def load_fit_side_cache(name: str) -> dict:
     """Load cached lightness fits for a package colormap from the user's app data folder.
     Returns an empty dict if there is no (readable) side cache."""

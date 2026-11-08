@@ -9,12 +9,11 @@ import numpy as np
 from typing import Tuple, List, Optional
 import argparse
 import cv2
-from scipy.ndimage import gaussian_filter1d
 from pathlib import Path
 from tqdm import tqdm
 
 from perfect_cmaps.color_utils import *
-from perfect_cmaps.storage import load_data, get_test_img_path
+from perfect_cmaps.storage import get_test_img_path
 from perfect_cmaps.lightness_fit import get_fit, build_lab
 
 

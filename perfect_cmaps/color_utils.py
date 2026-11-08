@@ -4,7 +4,7 @@ from scipy.stats import beta
 from scipy.interpolate import interp1d
 from scipy.optimize import linprog
 from dataclasses import dataclass
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Tuple, Union
 from colour import sRGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_sRGB
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -42,13 +42,6 @@ def diverging_envelope(x: np.ndarray, c: float = 4, x1: float = 0.25) -> np.ndar
 
     after_x2 = x > 1-x1
     result[after_x2] = c * (1 - x[after_x2])
-    return result
-
-
-def dying_cos(x: np.ndarray, offset: float = 0.0):
-    result = np.zeros_like(x)
-    values = np.mod(np.round(x - offset), 2) == 0
-    result[values] = (1 + np.cos(2*np.pi*(x[values]-offset)))/2
     return result
 
 
