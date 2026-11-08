@@ -22,9 +22,13 @@ In the window, you choose one color per lightness level:
 - **V** to switch between the plain a\*b\* plane and a view where each gamut slice is stretched to fill the square. The stretched view keeps the hue angle, and the distance from the center is the chroma relative to the most saturated color of that hue, which makes the small slices near black and white easier to work with. Start in it with `--view square`.
 - **Esc** to quit without saving.
 
-When all colors are chosen, the final colormap is shown, and you can save it under a name.
+When all colors are chosen, the final colormap is shown, and you can name it and save it.
 
-https://github.com/user-attachments/assets/a63d0c31-d799-49d0-a2cd-30c0b423378f
+https://github.com/user-attachments/assets/83e53b18-62d8-4003-b7ef-ad37042df294
+
+You can also change the view to a square-transformed version of the CIELAB gamut slices, which can make it easier to place control points:
+
+https://github.com/user-attachments/assets/c8f72af1-411e-49bf-8fb5-7bbd9b85efd3
 
 ### Generated colormap
 To test out your colormap, you can use the function `get_cmap()` or use the main function from `colormaps.py`:
