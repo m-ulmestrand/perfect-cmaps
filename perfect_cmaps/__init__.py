@@ -4,7 +4,7 @@ from .storage import list_cmaps
 
 
 __all__ = ["get_cmap", "create_cmap", "list_cmaps", "compare_cmaps", "plot_cmap"]
-__version__ = "1.5.0"
+__version__ = "2.0.0"
 
 
 def __getattr__(name: str):
