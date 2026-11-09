@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from perfect_cmaps.color_utils import *
 from perfect_cmaps.storage import get_test_img_path, list_cmaps
-from perfect_cmaps.lightness_fit import get_fit, build_lab
+from perfect_cmaps.lightness_fit import get_fit, build_lab, resolve_stored_bounds
 
 
 # Tolerance for out-of-gamut values when applying a cached lightness fit
@@ -94,7 +94,9 @@ def get_cmap(
         l_dark (float | Tuple[float, float], optional): Bounds on the lightness of the
             darkest point of the colormap, as (low, high) or a single fixed value.
             For diverging profiles, this is the lightness of the edges (or the center,
-            for the inverted variants). Defaults to None, meaning no constraint.
+            for the inverted variants). Defaults to None, meaning no constraint, or the
+            bounds saved with the colormap (e.g. by ``optimize_cmap``) if neither ``l_dark``
+            nor ``l_light`` is given.
         l_light (float | Tuple[float, float], optional): Bounds on the lightness of the
             lightest point of the colormap, like ``l_dark``. For the flat profile, the
             constant lightness must satisfy both ``l_dark`` and ``l_light``.
@@ -112,6 +114,8 @@ def get_cmap(
             between these positions (0-1), e.g. (0.2, 0.9). The colors are exactly those of
             the full colormap at the same positions, so lightness bounds refer to the full
             colormap. The truncated colormap still has ``n`` colors. Defaults to None.
+            Colormaps saved with ``"reversed": true`` (e.g. by ``optimize_cmap``) run from
+            light to dark, and the positions refer to that direction.
 
     Returns:
         mcolors.LinearSegmentedColormap: Matplotlib-formatted colormap
@@ -131,10 +135,14 @@ def get_cmap(
         json_data, fit = get_fit(cmap_name, lightness, interpolation, smoothing, l_dark, l_light, bounds)
         if lightness is None:
             lightness = json_data["lightness"]
+        l_dark, l_light, bounds = resolve_stored_bounds(json_data, l_dark, l_light, bounds)
 
         control_points = np.array(json_data["points"])
         lab_values = build_lab(control_points, n_full, lightness, interpolation, smoothing)
         rgb_values = _apply_fit(lab_values, fit, lightness, l_dark, l_light, bounds)
+        if json_data.get("reversed", False):
+            # Control points are stored dark to light; the colormap runs light to dark
+            rgb_values = rgb_values[::-1]
 
     else:
         color_function = CMAP_DICT[cmap_name]
