@@ -41,6 +41,10 @@ N_REF = 1024
 
 DEFAULT_INTERPOLATION = "quadratic"
 
+# Optional default lightness bounds saved with a colormap, e.g. by optimize_cmap:
+# {"l_dark": ..., "l_light": ..., "bounds": "relative" | "absolute"}
+STORED_BOUNDS_KEY = "lightness_bounds"
+
 # In-process memos
 _memo: Dict[tuple, LightnessFit] = {}
 _envelope_memo: Dict[tuple, Tuple[np.ndarray, np.ndarray]] = {}
@@ -102,6 +106,23 @@ def compute_fit(
     return solve_lightness(p_hat, L_min, L_max, lightness == "flat", l_dark, l_light, bounds)
 
 
+def resolve_stored_bounds(
+    json_data: dict,
+    l_dark: LightnessBounds,
+    l_light: LightnessBounds,
+    bounds: str,
+) -> Tuple[LightnessBounds, LightnessBounds, str]:
+    """Use the colormap's saved lightness bounds if neither ``l_dark`` nor ``l_light`` is given."""
+    stored = json_data.get(STORED_BOUNDS_KEY)
+    if stored is None or l_dark is not None or l_light is not None:
+        return l_dark, l_light, bounds
+
+    def as_bounds(value):
+        return tuple(value) if isinstance(value, list) else value
+
+    return as_bounds(stored.get("l_dark")), as_bounds(stored.get("l_light")), stored.get("bounds", DEFAULT_BOUNDS_MODE)
+
+
 def upgrade_schema(json_data: dict) -> bool:
     """Bring legacy (v1) data up to the current schema in place.
     Drops cached fits if the control points changed. Returns True if anything changed."""
@@ -153,7 +174,8 @@ def get_fit(
     bounds: str = DEFAULT_BOUNDS_MODE,
 ) -> Tuple[dict, LightnessFit]:
     """Load a colormap's data and its lightness fit, optimizing on a cache miss.
-    Fits with default lightness bounds are persisted to the colormap's data.
+    Fits with default lightness bounds are persisted to the colormap's data. If neither
+    ``l_dark`` nor ``l_light`` is given, the colormap's saved bounds are used, if any.
 
     Returns:
         Tuple[dict, LightnessFit]: (json_data, fit)
@@ -170,6 +192,7 @@ def get_fit(
 
     if lightness is None:
         lightness = json_data["lightness"]
+    l_dark, l_light, bounds = resolve_stored_bounds(json_data, l_dark, l_light, bounds)
 
     constrained = l_dark is not None or l_light is not None
     memo_key = (cmap_name, json_data["points_hash"], fit_key(lightness, interpolation, smoothing))

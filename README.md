@@ -10,6 +10,7 @@ To stay as true as possible to the lightness achieved by a true grayscale colorm
 - `list_cmaps()`: Lists all available local and internal colormaps.
 - `compare_cmaps()`: Plots a comparison of colormaps by name, or of all available colormaps if no names are given.
 - `plot_cmap()`: Plots a single colormap (or colormap name) with its lightness profile, a test image and its color channels.
+- `optimize_cmap()`: Reoptimizes the lightness of an existing colormap, such as one from `matplotlib`.
 
 ### Example of creating a custom colormap
 run: `python ./perfect_cmaps/customize_cmap.py --num_points 21 --lightness linear` or a similar command
@@ -43,6 +44,25 @@ pcm.plot_cmap(cmap)
 Here we specify to use a colormap called `test_colormap` and create the colormap with 1000 points, with quadratic interpolation and some amount of smoothing applied. 
 
 ![Generated colormap](assets/test_colormap.png)
+
+### Optimizing existing colormaps
+Colormaps from `matplotlib` are often not perfectly linear (or diverging) in lightness, and don't always use the full lightness range. `optimize_cmap()` replaces the L\* channel of a colormap with one of the lightness profiles.
+
+```
+import perfect_cmaps as pcm
+cmap = pcm.optimize_cmap("viridis", plot=True)                   # profile is detected: linear
+cmap = pcm.optimize_cmap("coolwarm", lightness="diverging")       # or choose the profile yourself
+cmap = pcm.optimize_cmap("Blues", save_name="blues_optimized")    # save it for get_cmap()
+cmap = pcm.get_cmap("blues_optimized")
+```
+
+- The lightness profile is detected from the colormap's own lightness unless you give `lightness`.
+- Colormaps that go from light to dark, like `Blues` or `viridis_r`, keep their direction.
+- By default, the colors (a\* and b\*) are kept as they are, and the lightness range stays within the original one. `l_dark` and `l_light` work as in `get_cmap()`. A saved colormap keeps its lightness bounds when loaded with `get_cmap()`.
+- Keeping a\* and b\* fixed limits how wide the lightness range can be, since every color has to stay within the sRGB gamut. With `target_range` (`"original"`, `"full"` or `(l_dark, l_light)`), colors are moved towards grey, keeping their hue, just enough to reach the given range, and the range is then maximized. Chroma is scaled per control point, so `n_points` (default 32 with `target_range`) controls how gradual the change is: fewer points give smoother chroma through interpolation. E.g. `pcm.optimize_cmap("magma", target_range="original")` makes magma linear while keeping its original lightness range. Use `plot=True` to see the lightness and chroma before and after.
+- Colormaps whose colors can't all be fitted to the profile within the gamut, like `jet` or `hsv`, print a warning.
+
+From the command line: `python -m perfect_cmaps.optimize --colormap viridis --target_range full --save viridis_optimized`.
 
 ### Test images 
 ![Test images](assets/test_colormap_images.png)
